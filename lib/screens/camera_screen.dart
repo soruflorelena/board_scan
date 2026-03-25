@@ -107,20 +107,27 @@ class _CameraScreenState extends State<CameraScreen>
             // ── Preview sin distorsión ──
             if (_isInitialized && _controller != null)
               Positioned.fill(
-                child: OverflowBox(
-                  maxWidth: double.infinity,
-                  maxHeight: double.infinity,
-                  child: AspectRatio(
-                    aspectRatio: _controller!.value.aspectRatio,
-                    child: CameraPreview(_controller!),
-                  ),
+                child: LayoutBuilder(
+                  // Usamos LayoutBuilder para obtener el tamaño disponible
+                  builder: (context, constraints) {
+                    return ClipRect(
+                      // Evita que la cámara se dibuje fuera de la pantalla
+                      child: OverflowBox(
+                        alignment: Alignment.center,
+                        maxWidth: constraints.maxWidth,
+                        // Aquí forzamos a que el alto se adapte a la proporción sin ser infinito
+                        maxHeight: constraints.maxWidth /
+                            _controller!.value.aspectRatio,
+                        child: CameraPreview(_controller!),
+                      ),
+                    );
+                  },
                 ),
               )
             else
               const Center(
                 child: CircularProgressIndicator(color: Colors.white),
               ),
-
             // ── Overlay oscuro ──
             _DarkOverlay(
               frameLeft: frameLeft,
