@@ -69,17 +69,59 @@ class _CameraScreenState extends State<CameraScreen>
     if (_controller == null || !_controller!.value.isInitialized) return;
     if (_isTakingPhoto) return;
     setState(() => _isTakingPhoto = true);
+
     try {
+      // 1. Tomamos la foto original completa
       final XFile photo = await _controller!.takePicture();
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PreviewScreen(imagePaths: [photo.path]),
-        ),
-      );
+
+      // 2. Leemos la imagen usando la librería 'image'
+      final bytes = await File(photo.path).readAsBytes();
+      img.Image? capturedImage = img.decodeImage(bytes);
+
+      if (capturedImage != null) {
+        // 3. Replicamos las variables matemáticas del marco
+        final size = MediaQuery.of(context).size;
+        final frameW = size.width * 0.85;
+        final frameH = frameW * 0.65;
+        final frameLeft = (size.width - frameW) / 2;
+        final frameTop = (size.height - frameH) / 2 - 20;
+
+        // 4. Calculamos la relación de escala (Resolución real vs Pantalla del celular)
+        final double scaleX = capturedImage.width / size.width;
+        final double scaleY = capturedImage.height / size.height;
+
+        // 5. Convertimos las coordenadas de la pantalla a los píxeles reales de la fotografía
+        final int cropX = (frameLeft * scaleX).toInt();
+        final int cropY = (frameTop * scaleY).toInt();
+        final int cropW = (frameW * scaleX).toInt();
+        final int cropH = (frameH * scaleY).toInt();
+
+        // 6. Recortamos la imagen
+        img.Image croppedImage = img.copyCrop(
+          capturedImage,
+          x: cropX,
+          y: cropY,
+          width: cropW,
+          height: cropH,
+        );
+
+        // 7. Guardamos la imagen recortada temporalmente en el dispositivo
+        final tempDir = await getTemporaryDirectory();
+        final croppedFile = File('${tempDir.path}/cropped_board_${DateTime.now().millisecondsSinceEpoch}.jpg');
+        await croppedFile.writeAsBytes(img.encodeJpg(croppedImage));
+
+        if (!mounted) return;
+
+        // 8. Navegamos a la siguiente pantalla pasando ÚNICAMENTE la imagen recortada
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PreviewScreen(imagePaths: [croppedFile.path]),
+          ),
+        );
+      }
     } catch (e) {
-      debugPrint('Error: $e');
+      debugPrint('Error al tomar/recortar foto: $e');
     } finally {
       if (mounted) setState(() => _isTakingPhoto = false);
     }
@@ -107,27 +149,22 @@ class _CameraScreenState extends State<CameraScreen>
             // ── Preview sin distorsión ──
             if (_isInitialized && _controller != null)
               Positioned.fill(
-                child: LayoutBuilder(
-                  // Usamos LayoutBuilder para obtener el tamaño disponible
-                  builder: (context, constraints) {
-                    return ClipRect(
-                      // Evita que la cámara se dibuje fuera de la pantalla
-                      child: OverflowBox(
-                        alignment: Alignment.center,
-                        maxWidth: constraints.maxWidth,
-                        // Aquí forzamos a que el alto se adapte a la proporción sin ser infinito
-                        maxHeight: constraints.maxWidth /
-                            _controller!.value.aspectRatio,
-                        child: CameraPreview(_controller!),
-                      ),
-                    );
-                  },
+                child: ClipRect(
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: 100,
+                      height: 100 * _controller!.value.aspectRatio,
+                      child: CameraPreview(_controller!),
+                    ),
+                  ),
                 ),
               )
             else
               const Center(
                 child: CircularProgressIndicator(color: Colors.white),
               ),
+
             // ── Overlay oscuro ──
             _DarkOverlay(
               frameLeft: frameLeft,
@@ -168,7 +205,7 @@ class _CameraScreenState extends State<CameraScreen>
                       children: [
                         IconButton(
                           icon:
-                              const Icon(Icons.arrow_back, color: Colors.white),
+                          const Icon(Icons.arrow_back, color: Colors.white),
                           onPressed: () => Navigator.pop(context),
                         ),
                         const Expanded(
@@ -223,7 +260,7 @@ class _CameraScreenState extends State<CameraScreen>
               right: 0,
               child: Container(
                 padding:
-                    const EdgeInsets.symmetric(vertical: 24, horizontal: 40),
+                const EdgeInsets.symmetric(vertical: 24, horizontal: 40),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
@@ -251,17 +288,17 @@ class _CameraScreenState extends State<CameraScreen>
                         ),
                         child: _isTakingPhoto
                             ? const Padding(
-                                padding: EdgeInsets.all(18),
-                                child: CircularProgressIndicator(
-                                    color: Colors.grey, strokeWidth: 2),
-                              )
+                          padding: EdgeInsets.all(18),
+                          child: CircularProgressIndicator(
+                              color: Colors.grey, strokeWidth: 2),
+                        )
                             : Container(
-                                margin: const EdgeInsets.all(5),
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white,
-                                ),
-                              ),
+                          margin: const EdgeInsets.all(5),
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
                     // Voltear
@@ -392,7 +429,7 @@ class _CornerWidget extends StatelessWidget {
       height: size,
       child: CustomPaint(
         painter:
-            _CornerPainter(color: color, width: width, top: top, left: left),
+        _CornerPainter(color: color, width: width, top: top, left: left),
       ),
     );
   }
