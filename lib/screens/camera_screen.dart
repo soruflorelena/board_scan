@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -14,7 +13,8 @@ class CameraScreen extends StatefulWidget {
   State<CameraScreen> createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver {
+class _CameraScreenState extends State<CameraScreen>
+    with WidgetsBindingObserver {
   CameraController? _controller;
   bool _isInitialized = false;
   bool _isTakingPhoto = false;
@@ -24,13 +24,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
-    // ── Forzamos la orientación horizontal ──
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-
     _initCamera(0);
   }
 
@@ -38,13 +31,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
-
-    // ── Restauramos la orientación vertical al salir ──
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-
     super.dispose();
   }
 
@@ -62,16 +48,13 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     if (widget.cameras.isEmpty) return;
     final controller = CameraController(
       widget.cameras[index],
-      ResolutionPreset.max, // Máxima resolución para mejor OCR
+      ResolutionPreset.high,
       enableAudio: false,
       imageFormatGroup: ImageFormatGroup.jpeg,
     );
     try {
       await controller.initialize();
       if (!mounted) return;
-
-      await controller.lockCaptureOrientation();
-
       setState(() {
         _controller = controller;
         _isInitialized = true;
@@ -89,39 +72,26 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
 
     try {
       final XFile photo = await _controller!.takePicture();
+
       final bytes = await File(photo.path).readAsBytes();
       img.Image? capturedImage = img.decodeImage(bytes);
 
       if (capturedImage != null) {
-        capturedImage = img.bakeOrientation(capturedImage);
         final size = MediaQuery.of(context).size;
 
-        // Dimensiones del marco en pantalla
-        final frameW = size.width * 0.70;
-        final frameH = size.height * 0.80;
-        final frameLeft = (size.width - frameW) / 2 - 40; // Desplazado un poco a la izq para balancear la UI
-        final frameTop = (size.height - frameH) / 2;
+        // ── DIMENSIONES AJUSTADAS Y CENTRADAS ──
+        final frameW = size.width * 0.75; // Más chico (antes 0.85)
+        final frameH = frameW * 0.65;
+        final frameLeft = (size.width - frameW) / 2;
+        final frameTop = (size.height - frameH) / 2; // Totalmente centrado
 
-        // Matemáticas exactas para BoxFit.cover
-        final imageRatio = capturedImage.width / capturedImage.height;
-        final screenRatio = size.width / size.height;
+        final double scaleX = capturedImage.width / size.width;
+        final double scaleY = capturedImage.height / size.height;
 
-        double scale;
-        double dx = 0;
-        double dy = 0;
-
-        if (screenRatio > imageRatio) {
-          scale = capturedImage.width / size.width;
-          dy = (capturedImage.height - size.height * scale) / 2;
-        } else {
-          scale = capturedImage.height / size.height;
-          dx = (capturedImage.width - size.width * scale) / 2;
-        }
-
-        final int cropX = (frameLeft * scale + dx).toInt();
-        final int cropY = (frameTop * scale + dy).toInt();
-        final int cropW = (frameW * scale).toInt();
-        final int cropH = (frameH * scale).toInt();
+        final int cropX = (frameLeft * scaleX).toInt();
+        final int cropY = (frameTop * scaleY).toInt();
+        final int cropW = (frameW * scaleX).toInt();
+        final int cropH = (frameH * scaleY).toInt();
 
         img.Image croppedImage = img.copyCrop(
           capturedImage,
@@ -137,9 +107,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
 
         if (!mounted) return;
 
-        await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-
-        Navigator.pushReplacement(
+        Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => PreviewScreen(imagePaths: [croppedFile.path]),
@@ -162,151 +130,165 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    // ── Dimensiones del marco ──
-    final frameW = size.width * 0.70; // 70% del ancho de la pantalla
-    final frameH = size.height * 0.80; // 80% del alto
-    final frameLeft = (size.width - frameW) / 2 - 40; // Centrado pero ajustado por el panel derecho
-    final frameTop = (size.height - frameH) / 2;
+    // ── DIMENSIONES AJUSTADAS Y CENTRADAS EN LA UI ──
+    final frameW = size.width * 0.75; // Más chico
+    final frameH = frameW * 0.65;
+    final frameLeft = (size.width - frameW) / 2;
+    final frameTop = (size.height - frameH) / 2; // Totalmente centrado
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // ── Preview de Cámara ──
-          if (_isInitialized && _controller != null)
-            Positioned.fill(
-              child: ClipRect(
-                child: FittedBox(
-                  fit: BoxFit.cover,
-                  child: SizedBox(
-                    width: _controller!.value.aspectRatio,
-                    height: 1.0,
-                    child: CameraPreview(_controller!),
-                  ),
-                ),
-              ),
-            )
-          else
-            const Center(child: CircularProgressIndicator(color: Colors.white)),
-
-          // ── Overlay oscuro exterior al marco ──
-          _DarkOverlay(
-            frameLeft: frameLeft,
-            frameTop: frameTop,
-            frameWidth: frameW,
-            frameHeight: frameH,
-          ),
-
-          // ── Marco Verde Central ──
-          Positioned(
-            left: frameLeft,
-            top: frameTop,
-            width: frameW,
-            height: frameH,
-            child: const _GuideFrame(),
-          ),
-
-          // ── Textos y Botón Atrás (Izquierda/Arriba) ──
-          Positioned(
-            top: 16,
-            left: 16,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black45,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () {
-                      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-                      Navigator.pop(context);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'ESCÁNER DE PIZARRÓN',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
+      body: SafeArea(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // ── Preview sin distorsión (Solución segura FittedBox) ──
+            if (_isInitialized && _controller != null)
+              Positioned.fill(
+                child: ClipRect(
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: 100,
+                      height: 100 * _controller!.value.aspectRatio,
+                      child: CameraPreview(_controller!),
                     ),
-                    Text(
-                      'Alinea para extraer texto OCR',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 13,
+                  ),
+                ),
+              )
+            else
+              const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+
+            // ── Overlay oscuro ──
+            _DarkOverlay(
+              frameLeft: frameLeft,
+              frameTop: frameTop,
+              frameWidth: frameW,
+              frameHeight: frameH,
+            ),
+
+            // ── Marco ──
+            Positioned(
+              left: frameLeft,
+              top: frameTop,
+              width: frameW,
+              height: frameH,
+              child: const _GuideFrame(),
+            ),
+
+            // ── Header (Arriba) ──
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.7),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        const Expanded(
+                          child: Text(
+                            'Tomar foto',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                        const SizedBox(width: 48),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2)),
+                      ),
+                      child: const Text(
+                        'Alinea el pizarrón dentro del marco',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-
-          // ── Instrucción inferior ──
-          Positioned(
-            bottom: 24,
-            left: frameLeft,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(20),
               ),
+            ),
+
+            // ── Hint ──
+            Positioned(
+              top: frameTop + frameH + 12,
+              left: 0,
+              right: 0,
               child: const Text(
-                'Mantén el dispositivo estable y paralelo al pizarrón',
-                style: TextStyle(color: Colors.white, fontSize: 13),
+                'Mantén el celular estable y paralelo al pizarrón',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white60, fontSize: 11),
               ),
             ),
-          ),
 
-          // ── Panel de Controles (Derecha) ──
-          Positioned(
-            right: 0,
-            top: 0,
-            bottom: 0,
-            width: 130,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.black54, // Fondo semitransparente oscuro
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Icono decorativo de cámara
-                  const Icon(Icons.camera_alt_outlined, color: Colors.white54, size: 28),
-                  const SizedBox(height: 40),
-
-                  // Disparador principal
-                  GestureDetector(
-                    onTap: _isTakingPhoto ? null : _takePhoto,
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4),
-                        color: _isTakingPhoto ? Colors.grey : Colors.white24,
-                      ),
-                      child: _isTakingPhoto
-                          ? const Padding(
-                        padding: EdgeInsets.all(22),
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                      )
-                          : Center(
-                        child: Container(
-                          width: 60,
-                          height: 60,
+            // ── Controles (Abajo) ──
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding:
+                const EdgeInsets.symmetric(vertical: 24, horizontal: 40),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.8),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const SizedBox(width: 46),
+                    // Disparador
+                    GestureDetector(
+                      onTap: _isTakingPhoto ? null : _takePhoto,
+                      child: Container(
+                        width: 70,
+                        height: 70,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          color: _isTakingPhoto ? Colors.grey : Colors.white,
+                        ),
+                        child: _isTakingPhoto
+                            ? const Padding(
+                          padding: EdgeInsets.all(18),
+                          child: CircularProgressIndicator(
+                              color: Colors.grey, strokeWidth: 2),
+                        )
+                            : Container(
+                          margin: const EdgeInsets.all(5),
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
                             color: Colors.white,
@@ -314,36 +296,32 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                         ),
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 40),
-
-                  // Voltear cámara
-                  GestureDetector(
-                    onTap: _flipCamera,
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.15),
+                    // Voltear
+                    GestureDetector(
+                      onTap: _flipCamera,
+                      child: Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.black.withValues(alpha: 0.5),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3)),
+                        ),
+                        child: const Icon(Icons.flip_camera_ios,
+                            color: Colors.white, size: 22),
                       ),
-                      child: const Icon(Icons.flip_camera_ios, color: Colors.white, size: 24),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text('Voltear', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
-
-// ── Clases Auxiliares Visuales ──
 
 class _DarkOverlay extends StatelessWidget {
   final double frameLeft, frameTop, frameWidth, frameHeight;
@@ -356,12 +334,32 @@ class _DarkOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const color = Color(0x99000000); // 60% opacidad
+    const color = Color(0x8C000000);
     return Stack(children: [
-      Positioned(top: 0, left: 0, right: 0, height: frameTop, child: const ColoredBox(color: color)),
-      Positioned(top: frameTop + frameHeight, left: 0, right: 0, bottom: 0, child: const ColoredBox(color: color)),
-      Positioned(top: frameTop, left: 0, width: frameLeft, height: frameHeight, child: const ColoredBox(color: color)),
-      Positioned(top: frameTop, left: frameLeft + frameWidth, right: 0, height: frameHeight, child: const ColoredBox(color: color)),
+      Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: frameTop,
+          child: const ColoredBox(color: color)),
+      Positioned(
+          top: frameTop + frameHeight,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: const ColoredBox(color: color)),
+      Positioned(
+          top: frameTop,
+          left: 0,
+          width: frameLeft,
+          height: frameHeight,
+          child: const ColoredBox(color: color)),
+      Positioned(
+          top: frameTop,
+          left: frameLeft + frameWidth,
+          right: 0,
+          height: frameHeight,
+          child: const ColoredBox(color: color)),
     ]);
   }
 }
@@ -371,42 +369,38 @@ class _GuideFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const color = Color(0xFF4ADE80); // Verde brillante
-    const s = 40.0; // Esquinas más largas
-    const w = 4.0;  // Esquinas más gruesas
+    const color = Color(0xFF4ADE80);
+    const s = 26.0;
+    const w = 3.5;
     return Stack(children: [
-      // Borde tenue completo
       Positioned.fill(
         child: Container(
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+            border: Border.all(
+                color: Colors.white.withValues(alpha: 0.25), width: 1),
           ),
         ),
       ),
-      // Líneas guías cruzadas (tercios) opcionales
-      Positioned.fill(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Container(height: 1, color: Colors.white.withOpacity(0.1)),
-            Container(height: 1, color: Colors.white.withOpacity(0.1)),
-          ],
-        ),
-      ),
-      Positioned.fill(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Container(width: 1, color: Colors.white.withOpacity(0.1)),
-            Container(width: 1, color: Colors.white.withOpacity(0.1)),
-          ],
-        ),
-      ),
-      // Esquinas
-      Positioned(top: 0, left: 0, child: _CornerWidget(color: color, size: s, width: w, top: true, left: true)),
-      Positioned(top: 0, right: 0, child: _CornerWidget(color: color, size: s, width: w, top: true, left: false)),
-      Positioned(bottom: 0, left: 0, child: _CornerWidget(color: color, size: s, width: w, top: false, left: true)),
-      Positioned(bottom: 0, right: 0, child: _CornerWidget(color: color, size: s, width: w, top: false, left: false)),
+      Positioned(
+          top: 0,
+          left: 0,
+          child: _CornerWidget(
+              color: color, size: s, width: w, top: true, left: true)),
+      Positioned(
+          top: 0,
+          right: 0,
+          child: _CornerWidget(
+              color: color, size: s, width: w, top: true, left: false)),
+      Positioned(
+          bottom: 0,
+          left: 0,
+          child: _CornerWidget(
+              color: color, size: s, width: w, top: false, left: true)),
+      Positioned(
+          bottom: 0,
+          right: 0,
+          child: _CornerWidget(
+              color: color, size: s, width: w, top: false, left: false)),
     ]);
   }
 }
@@ -429,7 +423,8 @@ class _CornerWidget extends StatelessWidget {
       width: size,
       height: size,
       child: CustomPaint(
-        painter: _CornerPainter(color: color, width: width, top: top, left: left),
+        painter:
+        _CornerPainter(color: color, width: width, top: top, left: left),
       ),
     );
   }
