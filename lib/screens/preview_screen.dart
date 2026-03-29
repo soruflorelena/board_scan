@@ -15,7 +15,6 @@ class PreviewScreen extends StatefulWidget {
 class _PreviewScreenState extends State<PreviewScreen> {
   final OcrService _ocrService = OcrService();
 
-  // Una entrada por imagen
   List<_ImageResult> _results = [];
   bool _isProcessing = false;
 
@@ -127,7 +126,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 }
 
-// Modelo de resultado por imagen
 class _ImageResult {
   final String imagePath;
   OcrResult? ocrResult;
@@ -138,7 +136,6 @@ class _ImageResult {
   _ImageResult({required this.imagePath});
 }
 
-// Card por cada imagen
 class _ImageCard extends StatelessWidget {
   final _ImageResult result;
   final int index;
@@ -164,7 +161,6 @@ class _ImageCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Encabezado ──
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
@@ -199,8 +195,6 @@ class _ImageCard extends StatelessWidget {
               ],
             ),
           ),
-
-          // ── Imagen ──
           ClipRRect(
             child: SizedBox(
               height: 180,
@@ -211,8 +205,6 @@ class _ImageCard extends StatelessWidget {
               ),
             ),
           ),
-
-          // ── Contenido OCR ──
           Padding(
             padding: const EdgeInsets.all(14),
             child: !result.isDone
@@ -236,7 +228,6 @@ class _ImageCard extends StatelessWidget {
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Label
                           const Text(
                             'Texto detectado',
                             style: TextStyle(
@@ -247,7 +238,6 @@ class _ImageCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          // Campo de texto
                           Container(
                             width: double.infinity,
                             constraints: const BoxConstraints(minHeight: 80),
@@ -271,7 +261,6 @@ class _ImageCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          // Botón copiar individual
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton.icon(

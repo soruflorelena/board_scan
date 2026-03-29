@@ -22,7 +22,6 @@ class OcrService {
       ));
     }
 
-    // Ya no devolvemos imageZones porque la UI no las usa
     return OcrResult(
       fullText: recognizedText.text,
       textBlocks: textBlocks,

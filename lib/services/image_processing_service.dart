@@ -8,7 +8,6 @@ class ImageProcessingService {
     img.Image? image = img.decodeImage(bytes);
     if (image == null) return imagePath;
 
-    // Redimensionar si es muy grande
     if (image.width > 2000 || image.height > 2000) {
       image = img.copyResize(
         image,

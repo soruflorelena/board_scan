@@ -7,7 +7,6 @@ import 'preview_screen.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  // Lógica intacta
   Future<void> _openCamera(BuildContext context) async {
     final cameras = await availableCameras();
     if (!context.mounted) return;
@@ -19,7 +18,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // Lógica intacta
   Future<void> _pickFromGallery(BuildContext context) async {
     final picker = ImagePicker();
     final List<XFile> images = await picker.pickMultiImage(
@@ -40,7 +38,6 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Fondo con un degradado sutil en lugar de gris sólido
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -61,7 +58,6 @@ class HomeScreen extends StatelessWidget {
                     horizontal: 24.0, vertical: 32.0),
                 child: Container(
                   padding: const EdgeInsets.all(32.0),
-                  // Tarjeta central blanca con sombra
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(24),
@@ -76,7 +72,7 @@ class HomeScreen extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Ícono con fondo circular y resplandor
+                      // Ícono
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
@@ -98,7 +94,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 32),
 
-                      // Títulos con mejor tipografía
                       const Text(
                         'Board Scan',
                         style: TextStyle(
@@ -119,7 +114,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 48),
 
-                      // Botones con bordes más redondeados y elevación
                       SizedBox(
                         width: double.infinity,
                         height: 56,
@@ -133,6 +127,7 @@ class HomeScreen extends StatelessWidget {
                             backgroundColor: Colors.indigo.shade600,
                             foregroundColor: Colors.white,
                             elevation: 4,
+                            // ignore: deprecated_member_use
                             shadowColor: Colors.indigo.withOpacity(0.5),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16)),

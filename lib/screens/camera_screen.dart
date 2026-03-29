@@ -14,7 +14,8 @@ class CameraScreen extends StatefulWidget {
   State<CameraScreen> createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver {
+class _CameraScreenState extends State<CameraScreen>
+    with WidgetsBindingObserver {
   CameraController? _controller;
   bool _isInitialized = false;
   bool _isTakingPhoto = false;
@@ -25,7 +26,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // ── Forzamos la orientación a Horizontal ──
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
@@ -39,7 +39,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
 
-    // ── Restauramos la orientación a Vertical al salir ──
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -91,18 +90,15 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
       img.Image? capturedImage = img.decodeImage(bytes);
 
       if (capturedImage != null) {
-        // Aseguramos la rotación correcta de los metadatos de la cámara
         capturedImage = img.bakeOrientation(capturedImage);
 
         final size = MediaQuery.of(context).size;
 
-        // Mismas dimensiones que en el método build
         final frameH = size.height * 0.70;
         final frameW = frameH * 1.5;
         final frameLeft = (size.width - frameW) / 2;
         final frameTop = (size.height - frameH) / 2;
 
-        // Matemática exacta para el FittedBox.cover
         final imageRatio = capturedImage.width / capturedImage.height;
         final screenRatio = size.width / size.height;
 
@@ -132,13 +128,14 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
         );
 
         final tempDir = await getTemporaryDirectory();
-        final croppedFile = File('${tempDir.path}/cropped_board_${DateTime.now().millisecondsSinceEpoch}.jpg');
+        final croppedFile = File(
+            '${tempDir.path}/cropped_board_${DateTime.now().millisecondsSinceEpoch}.jpg');
         await croppedFile.writeAsBytes(img.encodeJpg(croppedImage));
 
         if (!mounted) return;
 
-        // Regresamos la pantalla a vertical antes de ir a la vista previa
-        await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+        await SystemChrome.setPreferredOrientations(
+            [DeviceOrientation.portraitUp]);
 
         Navigator.pushReplacement(
           context,
@@ -163,11 +160,10 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    // ── Dimensiones del Marco: Más chico y centrado matemáticamente ──
-    final frameH = size.height * 0.70; // 70% del alto de la pantalla
-    final frameW = frameH * 1.5;       // Proporción rectangular para pizarrón
-    final frameLeft = (size.width - frameW) / 2; // Exactamente en el centro horizontal
-    final frameTop = (size.height - frameH) / 2; // Exactamente en el centro vertical
+    final frameH = size.height * 0.70;
+    final frameW = frameH * 1.5;
+    final frameLeft = (size.width - frameW) / 2;
+    final frameTop = (size.height - frameH) / 2;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -191,7 +187,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
           else
             const Center(child: CircularProgressIndicator(color: Colors.white)),
 
-          // ── Overlay oscuro ──
           _DarkOverlay(
             frameLeft: frameLeft,
             frameTop: frameTop,
@@ -199,7 +194,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             frameHeight: frameH,
           ),
 
-          // ── Marco Verde Guía ──
+          // Marco de guía
           Positioned(
             left: frameLeft,
             top: frameTop,
@@ -208,7 +203,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             child: const _GuideFrame(),
           ),
 
-          // ── Botón Atrás (Arriba a la izquierda, flotante) ──
           Positioned(
             top: 20,
             left: 20,
@@ -218,16 +212,17 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                 shape: BoxShape.circle,
               ),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+                icon:
+                    const Icon(Icons.arrow_back, color: Colors.white, size: 28),
                 onPressed: () {
-                  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+                  SystemChrome.setPreferredOrientations(
+                      [DeviceOrientation.portraitUp]);
                   Navigator.pop(context);
                 },
               ),
             ),
           ),
 
-          // ── Instrucción Central (Arriba) ──
           Positioned(
             top: 24,
             left: 0,
@@ -235,11 +230,13 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             child: Align(
               alignment: Alignment.topCenter,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.2)),
                 ),
                 child: const Text(
                   'Alinea el pizarrón en el marco',
@@ -249,7 +246,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             ),
           ),
 
-          // ── Controles de Cámara (Derecha, flotantes) ──
           Positioned(
             right: 30,
             top: 0,
@@ -257,7 +253,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Voltear cámara
                 GestureDetector(
                   onTap: _flipCamera,
                   child: Container(
@@ -266,9 +261,11 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: Colors.black.withValues(alpha: 0.5),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.3)),
                     ),
-                    child: const Icon(Icons.flip_camera_ios, color: Colors.white, size: 22),
+                    child: const Icon(Icons.flip_camera_ios,
+                        color: Colors.white, size: 22),
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -285,19 +282,20 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                     ),
                     child: _isTakingPhoto
                         ? const Padding(
-                      padding: EdgeInsets.all(22),
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                    )
+                            padding: EdgeInsets.all(22),
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 3),
+                          )
                         : Center(
-                      child: Container(
-                        width: 60,
-                        height: 60,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
+                            child: Container(
+                              width: 60,
+                              height: 60,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -308,8 +306,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     );
   }
 }
-
-// ── CLASES AUXILIARES VISUALES ──
 
 class _DarkOverlay extends StatelessWidget {
   final double frameLeft, frameTop, frameWidth, frameHeight;
@@ -322,12 +318,32 @@ class _DarkOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const color = Color(0x99000000); // Overlay oscuro al 60%
+    const color = Color(0x99000000);
     return Stack(children: [
-      Positioned(top: 0, left: 0, right: 0, height: frameTop, child: const ColoredBox(color: color)),
-      Positioned(top: frameTop + frameHeight, left: 0, right: 0, bottom: 0, child: const ColoredBox(color: color)),
-      Positioned(top: frameTop, left: 0, width: frameLeft, height: frameHeight, child: const ColoredBox(color: color)),
-      Positioned(top: frameTop, left: frameLeft + frameWidth, right: 0, height: frameHeight, child: const ColoredBox(color: color)),
+      Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: frameTop,
+          child: const ColoredBox(color: color)),
+      Positioned(
+          top: frameTop + frameHeight,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: const ColoredBox(color: color)),
+      Positioned(
+          top: frameTop,
+          left: 0,
+          width: frameLeft,
+          height: frameHeight,
+          child: const ColoredBox(color: color)),
+      Positioned(
+          top: frameTop,
+          left: frameLeft + frameWidth,
+          right: 0,
+          height: frameHeight,
+          child: const ColoredBox(color: color)),
     ]);
   }
 }
@@ -344,14 +360,31 @@ class _GuideFrame extends StatelessWidget {
       Positioned.fill(
         child: Container(
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+            border: Border.all(
+                color: Colors.white.withValues(alpha: 0.3), width: 1),
           ),
         ),
       ),
-      Positioned(top: 0, left: 0, child: _CornerWidget(color: color, size: s, width: w, top: true, left: true)),
-      Positioned(top: 0, right: 0, child: _CornerWidget(color: color, size: s, width: w, top: true, left: false)),
-      Positioned(bottom: 0, left: 0, child: _CornerWidget(color: color, size: s, width: w, top: false, left: true)),
-      Positioned(bottom: 0, right: 0, child: _CornerWidget(color: color, size: s, width: w, top: false, left: false)),
+      Positioned(
+          top: 0,
+          left: 0,
+          child: _CornerWidget(
+              color: color, size: s, width: w, top: true, left: true)),
+      Positioned(
+          top: 0,
+          right: 0,
+          child: _CornerWidget(
+              color: color, size: s, width: w, top: true, left: false)),
+      Positioned(
+          bottom: 0,
+          left: 0,
+          child: _CornerWidget(
+              color: color, size: s, width: w, top: false, left: true)),
+      Positioned(
+          bottom: 0,
+          right: 0,
+          child: _CornerWidget(
+              color: color, size: s, width: w, top: false, left: false)),
     ]);
   }
 }
@@ -374,7 +407,8 @@ class _CornerWidget extends StatelessWidget {
       width: size,
       height: size,
       child: CustomPaint(
-        painter: _CornerPainter(color: color, width: width, top: top, left: left),
+        painter:
+            _CornerPainter(color: color, width: width, top: top, left: left),
       ),
     );
   }
