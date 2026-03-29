@@ -7,6 +7,7 @@ import 'preview_screen.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  // Lógica intacta
   Future<void> _openCamera(BuildContext context) async {
     final cameras = await availableCameras();
     if (!context.mounted) return;
@@ -18,6 +19,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // Lógica intacta
   Future<void> _pickFromGallery(BuildContext context) async {
     final picker = ImagePicker();
     final List<XFile> images = await picker.pickMultiImage(
@@ -38,76 +40,130 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: const Text('Board Scan'),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.indigo.shade50,
-                  borderRadius: BorderRadius.circular(60),
-                  border: Border.all(color: Colors.indigo.shade200, width: 2),
-                ),
-                child: Icon(Icons.document_scanner,
-                    size: 60, color: Colors.indigo.shade400),
-              ),
-              const SizedBox(height: 32),
-              const Text(
-                'Escanea tu pizarrón',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Toma una foto o selecciona varias\nimágenes para extraer el texto',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 48),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton.icon(
-                  onPressed: () => _openCamera(context),
-                  icon: const Icon(Icons.camera_alt),
-                  label:
-                      const Text('Tomar foto', style: TextStyle(fontSize: 16)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: OutlinedButton.icon(
-                  onPressed: () => _pickFromGallery(context),
-                  icon: const Icon(Icons.photo_library),
-                  label: const Text('Elegir de galería',
-                      style: TextStyle(fontSize: 16)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.indigo,
-                    side: const BorderSide(color: Colors.indigo, width: 2),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
+      // Fondo con un degradado sutil en lugar de gris sólido
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.indigo.shade50,
+              Colors.white,
+              Colors.indigo.shade100,
             ],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0, vertical: 32.0),
+                child: Container(
+                  padding: const EdgeInsets.all(32.0),
+                  // Tarjeta central blanca con sombra
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.indigo.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Ícono con fondo circular y resplandor
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.indigo.shade50,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.indigo.withOpacity(0.15),
+                              blurRadius: 15,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.document_scanner_rounded,
+                          size: 70,
+                          color: Colors.indigo.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Títulos con mejor tipografía
+                      const Text(
+                        'Board Scan',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Digitaliza tu pizarrón al instante.\nToma una foto o selecciona imágenes para extraer el texto.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.grey.shade600,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 48),
+
+                      // Botones con bordes más redondeados y elevación
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _openCamera(context),
+                          icon: const Icon(Icons.camera_alt_rounded, size: 22),
+                          label: const Text('Tomar Foto',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.indigo.shade600,
+                            foregroundColor: Colors.white,
+                            elevation: 4,
+                            shadowColor: Colors.indigo.withOpacity(0.5),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _pickFromGallery(context),
+                          icon:
+                              const Icon(Icons.photo_library_rounded, size: 22),
+                          label: const Text('Elegir de Galería',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.indigo.shade600,
+                            side: BorderSide(
+                                color: Colors.indigo.shade200, width: 2),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
