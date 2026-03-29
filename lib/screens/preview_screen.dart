@@ -16,7 +16,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
   final OcrService _ocrService = OcrService();
 
   List<_ImageResult> _results = [];
-  bool _isProcessing = false;
 
   @override
   void initState() {
@@ -36,7 +35,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   Future<void> _runOcrAll() async {
-    setState(() => _isProcessing = true);
     for (int i = 0; i < _results.length; i++) {
       try {
         final processed =
@@ -54,7 +52,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
         });
       }
     }
-    setState(() => _isProcessing = false);
   }
 
   Future<void> _copyAll() async {
