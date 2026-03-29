@@ -14,31 +14,33 @@ class PreviewScreen extends StatefulWidget {
 
 class _PreviewScreenState extends State<PreviewScreen> {
   final OcrService _ocrService = OcrService();
-  List<_ImageResult> _results = [];
+  List<_ResultadoImagen> _results = [];
 
   @override
   void initState() {
     super.initState();
     // Inicializa el estado para cada imagen seleccionada y arranca el análisis
     _results =
-        widget.imagePaths.map((p) => _ImageResult(imagePath: p)).toList();
-    _runOcrAll();
+        widget.imagePaths.map((p) => _ResultadoImagen(imagePath: p)).toList();
+    _aplicarOcr();
   }
 
   @override
   void dispose() {
     _ocrService.dispose();
-    for (final r in _results) r.controller.dispose();
+    for (final r in _results) {
+      r.controller.dispose();
+    }
     super.dispose();
   }
 
   // Pasa imagen por imagen para mejorarla y luego extraer el texto
-  Future<void> _runOcrAll() async {
+  Future<void> _aplicarOcr() async {
     for (int i = 0; i < _results.length; i++) {
       try {
         final processedPath =
-            await ImageProcessingService.processForOcr(_results[i].imagePath);
-        final ocr = await _ocrService.extractText(processedPath);
+            await ImageProcessingService.procesarParaOcr(_results[i].imagePath);
+        final ocr = await _ocrService.extraerTexto(processedPath);
         setState(() {
           _results[i].ocrResult = ocr;
           _results[i].controller.text = ocr.fullText;
@@ -54,7 +56,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   // Copia todo el texto extraído al portapapeles
-  Future<void> _copyAll() async {
+  Future<void> _copiarTodo() async {
     final allText = _results
         .map((r) => r.controller.text.trim())
         .where((t) => t.isNotEmpty)
@@ -75,7 +77,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
         foregroundColor: Colors.white,
         actions: [
           TextButton.icon(
-            onPressed: _copyAll,
+            onPressed: _copiarTodo,
             icon: const Icon(Icons.copy, color: Colors.white),
             label: const Text('Copiar todo',
                 style: TextStyle(color: Colors.white)),
@@ -119,11 +121,11 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 }
 
-class _ImageResult {
+class _ResultadoImagen {
   final String imagePath;
-  OcrResult? ocrResult;
+  ResultadoOcr? ocrResult;
   final TextEditingController controller = TextEditingController();
   bool isDone = false;
   String? error;
-  _ImageResult({required this.imagePath});
+  _ResultadoImagen({required this.imagePath});
 }

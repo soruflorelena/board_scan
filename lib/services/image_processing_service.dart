@@ -3,7 +3,7 @@ import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 
 class ImageProcessingService {
-  static Future<String> processForOcr(String imagePath) async {
+  static Future<String> procesarParaOcr(String imagePath) async {
     final bytes = await File(imagePath).readAsBytes();
     img.Image? image = img.decodeImage(bytes);
     if (image == null) return imagePath;

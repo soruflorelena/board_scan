@@ -10,7 +10,7 @@ class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   // Función para abrir cámara personalizada
-  Future<void> _openCamera(BuildContext context) async {
+  Future<void> _abrirCamara(BuildContext context) async {
     final cameras = await availableCameras();
     if (!context.mounted) return;
     Navigator.push(
@@ -22,7 +22,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   // Función para abrir la galería del teléfono
-  Future<void> _pickFromGallery(BuildContext context) async {
+  Future<void> _elegirGaleria(BuildContext context) async {
     final picker = ImagePicker();
     final List<XFile> images = await picker.pickMultiImage(
       imageQuality: 90,
@@ -122,7 +122,7 @@ class HomeScreen extends StatelessWidget {
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton.icon(
-                          onPressed: () => _openCamera(context),
+                          onPressed: () => _abrirCamara(context),
                           icon: const Icon(Icons.camera_alt_rounded, size: 22),
                           label: const Text('Tomar Foto',
                               style: TextStyle(
@@ -141,7 +141,7 @@ class HomeScreen extends StatelessWidget {
                         width: double.infinity,
                         height: 56,
                         child: OutlinedButton.icon(
-                          onPressed: () => _pickFromGallery(context),
+                          onPressed: () => _elegirGaleria(context),
                           icon:
                               const Icon(Icons.photo_library_rounded, size: 22),
                           label: const Text('Elegir de Galería',

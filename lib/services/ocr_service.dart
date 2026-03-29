@@ -5,7 +5,7 @@ class OcrService {
   // Carga el modelo de ML Kit para letras de alfabeto latino
   final _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
-  Future<OcrResult> extractText(String imagePath) async {
+  Future<ResultadoOcr> extraerTexto(String imagePath) async {
     final inputImage = InputImage.fromFile(File(imagePath));
     // Pasa la imagen por la Inteligencia Artificial
     final RecognizedText recognizedText =
@@ -25,7 +25,7 @@ class OcrService {
       ));
     }
 
-    return OcrResult(
+    return ResultadoOcr(
       fullText: recognizedText.text,
       textBlocks: textBlocks,
     );
@@ -36,11 +36,11 @@ class OcrService {
   }
 }
 
-class OcrResult {
+class ResultadoOcr {
   final String fullText;
   final List<TextBlock> textBlocks;
 
-  OcrResult({
+  ResultadoOcr({
     required this.fullText,
     required this.textBlocks,
   });

@@ -18,7 +18,7 @@ class _CameraScreenState extends State<CameraScreen>
     with WidgetsBindingObserver {
   CameraController? _controller;
   bool _isInitialized = false;
-  bool _isTakingPhoto = false;
+  bool _tomaFoto = false;
 
   @override
   void initState() {
@@ -26,7 +26,7 @@ class _CameraScreenState extends State<CameraScreen>
     WidgetsBinding.instance.addObserver(this);
     SystemChrome.setPreferredOrientations(
         [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
-    _initCamera(0);
+    _iniciarCamara(0);
   }
 
   @override
@@ -38,7 +38,7 @@ class _CameraScreenState extends State<CameraScreen>
     super.dispose();
   }
 
-  Future<void> _initCamera(int index) async {
+  Future<void> _iniciarCamara(int index) async {
     if (widget.cameras.isEmpty) return;
     final controller = CameraController(
       widget.cameras[index],
@@ -59,18 +59,17 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   Future<void> _takePhoto() async {
-    if (_controller == null ||
-        !_controller!.value.isInitialized ||
-        _isTakingPhoto) return;
-    setState(() => _isTakingPhoto = true);
+    if (_controller == null || !_controller!.value.isInitialized || _tomaFoto)
+      return;
+    setState(() => _tomaFoto = true);
 
     try {
       final XFile photo = await _controller!.takePicture();
       final bytes = await File(photo.path).readAsBytes();
-      img.Image? capturedImage = img.decodeImage(bytes);
+      img.Image? imagenTomada = img.decodeImage(bytes);
 
-      if (capturedImage != null) {
-        capturedImage = img.bakeOrientation(capturedImage);
+      if (imagenTomada != null) {
+        imagenTomada = img.bakeOrientation(imagenTomada);
         final size = MediaQuery.of(context).size;
 
         //Calcular el area de recorte
@@ -79,16 +78,16 @@ class _CameraScreenState extends State<CameraScreen>
         final frameLeft = (size.width - frameW) / 2;
         final frameTop = (size.height - frameH) / 2;
 
-        final imageRatio = capturedImage.width / capturedImage.height;
+        final imageRatio = imagenTomada.width / imagenTomada.height;
         final screenRatio = size.width / size.height;
         double scale, dx = 0, dy = 0;
 
         if (screenRatio > imageRatio) {
-          scale = capturedImage.width / size.width;
-          dy = (capturedImage.height - size.height * scale) / 2;
+          scale = imagenTomada.width / size.width;
+          dy = (imagenTomada.height - size.height * scale) / 2;
         } else {
-          scale = capturedImage.height / size.height;
-          dx = (capturedImage.width - size.width * scale) / 2;
+          scale = imagenTomada.height / size.height;
+          dx = (imagenTomada.width - size.width * scale) / 2;
         }
 
         final int cropX = (frameLeft * scale + dx).toInt();
@@ -96,7 +95,7 @@ class _CameraScreenState extends State<CameraScreen>
         final int cropW = (frameW * scale).toInt();
         final int cropH = (frameH * scale).toInt();
 
-        img.Image croppedImage = img.copyCrop(capturedImage,
+        img.Image croppedImage = img.copyCrop(imagenTomada,
             x: cropX, y: cropY, width: cropW, height: cropH);
 
         // Guardar la imagen recortada
@@ -119,7 +118,7 @@ class _CameraScreenState extends State<CameraScreen>
     } catch (e) {
       debugPrint('Error: $e');
     } finally {
-      if (mounted) setState(() => _isTakingPhoto = false);
+      if (mounted) setState(() => _tomaFoto = false);
     }
   }
 
@@ -189,14 +188,14 @@ class _CameraScreenState extends State<CameraScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 GestureDetector(
-                  onTap: _isTakingPhoto ? null : _takePhoto,
+                  onTap: _tomaFoto ? null : _takePhoto,
                   child: Container(
                     width: 76,
                     height: 76,
                     decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 3)),
-                    child: _isTakingPhoto
+                    child: _tomaFoto
                         ? const CircularProgressIndicator(color: Colors.white)
                         : Center(
                             child: Container(
