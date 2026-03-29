@@ -19,18 +19,13 @@ class _CameraScreenState extends State<CameraScreen>
   CameraController? _controller;
   bool _isInitialized = false;
   bool _isTakingPhoto = false;
-  int _selectedCameraIndex = 0;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-
+    SystemChrome.setPreferredOrientations(
+        [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
     _initCamera(0);
   }
 
@@ -38,23 +33,9 @@ class _CameraScreenState extends State<CameraScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
-
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-
+    SystemChrome.setPreferredOrientations(
+        [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_controller == null || !_controller!.value.isInitialized) return;
-    if (state == AppLifecycleState.inactive) {
-      _controller?.dispose();
-    } else if (state == AppLifecycleState.resumed) {
-      _initCamera(_selectedCameraIndex);
-    }
   }
 
   Future<void> _initCamera(int index) async {
@@ -68,11 +49,9 @@ class _CameraScreenState extends State<CameraScreen>
     try {
       await controller.initialize();
       if (!mounted) return;
-
       setState(() {
         _controller = controller;
         _isInitialized = true;
-        _selectedCameraIndex = index;
       });
     } catch (e) {
       debugPrint('Error: $e');
@@ -80,8 +59,9 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   Future<void> _takePhoto() async {
-    if (_controller == null || !_controller!.value.isInitialized) return;
-    if (_isTakingPhoto) return;
+    if (_controller == null ||
+        !_controller!.value.isInitialized ||
+        _isTakingPhoto) return;
     setState(() => _isTakingPhoto = true);
 
     try {
@@ -91,9 +71,9 @@ class _CameraScreenState extends State<CameraScreen>
 
       if (capturedImage != null) {
         capturedImage = img.bakeOrientation(capturedImage);
-
         final size = MediaQuery.of(context).size;
 
+        //Calcular el area de recorte
         final frameH = size.height * 0.70;
         final frameW = frameH * 1.5;
         final frameLeft = (size.width - frameW) / 2;
@@ -101,10 +81,7 @@ class _CameraScreenState extends State<CameraScreen>
 
         final imageRatio = capturedImage.width / capturedImage.height;
         final screenRatio = size.width / size.height;
-
-        double scale;
-        double dx = 0;
-        double dy = 0;
+        double scale, dx = 0, dy = 0;
 
         if (screenRatio > imageRatio) {
           scale = capturedImage.width / size.width;
@@ -119,47 +96,36 @@ class _CameraScreenState extends State<CameraScreen>
         final int cropW = (frameW * scale).toInt();
         final int cropH = (frameH * scale).toInt();
 
-        img.Image croppedImage = img.copyCrop(
-          capturedImage,
-          x: cropX,
-          y: cropY,
-          width: cropW,
-          height: cropH,
-        );
+        img.Image croppedImage = img.copyCrop(capturedImage,
+            x: cropX, y: cropY, width: cropW, height: cropH);
 
+        // Guardar la imagen recortada
         final tempDir = await getTemporaryDirectory();
         final croppedFile = File(
-            '${tempDir.path}/cropped_board_${DateTime.now().millisecondsSinceEpoch}.jpg');
+            '${tempDir.path}/cropped_${DateTime.now().millisecondsSinceEpoch}.jpg');
         await croppedFile.writeAsBytes(img.encodeJpg(croppedImage));
 
         if (!mounted) return;
-
         await SystemChrome.setPreferredOrientations(
             [DeviceOrientation.portraitUp]);
 
+        // Navegar a la pantalla de vista previa
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => PreviewScreen(imagePaths: [croppedFile.path]),
-          ),
+              builder: (_) => PreviewScreen(imagePaths: [croppedFile.path])),
         );
       }
     } catch (e) {
-      debugPrint('Error al tomar/recortar foto: $e');
+      debugPrint('Error: $e');
     } finally {
       if (mounted) setState(() => _isTakingPhoto = false);
     }
   }
 
-  void _flipCamera() {
-    if (widget.cameras.length < 2) return;
-    _initCamera((_selectedCameraIndex + 1) % widget.cameras.length);
-  }
-
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-
     final frameH = size.height * 0.70;
     final frameW = frameH * 1.5;
     final frameLeft = (size.width - frameW) / 2;
@@ -170,7 +136,6 @@ class _CameraScreenState extends State<CameraScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // ── Preview de Cámara (Sin distorsión) ──
           if (_isInitialized && _controller != null)
             Positioned.fill(
               child: ClipRect(
@@ -188,64 +153,34 @@ class _CameraScreenState extends State<CameraScreen>
             const Center(child: CircularProgressIndicator(color: Colors.white)),
 
           _DarkOverlay(
-            frameLeft: frameLeft,
-            frameTop: frameTop,
-            frameWidth: frameW,
-            frameHeight: frameH,
-          ),
+              frameLeft: frameLeft,
+              frameTop: frameTop,
+              frameWidth: frameW,
+              frameHeight: frameH),
 
-          // Marco de guía
+          // Cuadro verde de guía
           Positioned(
-            left: frameLeft,
-            top: frameTop,
-            width: frameW,
-            height: frameH,
-            child: const _GuideFrame(),
-          ),
+              left: frameLeft,
+              top: frameTop,
+              width: frameW,
+              height: frameH,
+              child: const _GuideFrame()),
 
+          // Botón flotante para regresar
           Positioned(
             top: 20,
             left: 20,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.black45,
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon:
-                    const Icon(Icons.arrow_back, color: Colors.white, size: 28),
-                onPressed: () {
-                  SystemChrome.setPreferredOrientations(
-                      [DeviceOrientation.portraitUp]);
-                  Navigator.pop(context);
-                },
-              ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+              onPressed: () {
+                SystemChrome.setPreferredOrientations(
+                    [DeviceOrientation.portraitUp]);
+                Navigator.pop(context);
+              },
             ),
           ),
 
-          Positioned(
-            top: 24,
-            left: 0,
-            right: 0,
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(20),
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                ),
-                child: const Text(
-                  'Alinea el pizarrón en el marco',
-                  style: TextStyle(color: Colors.white, fontSize: 13),
-                ),
-              ),
-            ),
-          ),
-
+          // Botón para tomar foto
           Positioned(
             right: 30,
             top: 0,
@@ -254,48 +189,22 @@ class _CameraScreenState extends State<CameraScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 GestureDetector(
-                  onTap: _flipCamera,
-                  child: Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.black.withValues(alpha: 0.5),
-                      border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.3)),
-                    ),
-                    child: const Icon(Icons.flip_camera_ios,
-                        color: Colors.white, size: 22),
-                  ),
-                ),
-                const SizedBox(height: 30),
-                // Disparador principal
-                GestureDetector(
                   onTap: _isTakingPhoto ? null : _takePhoto,
                   child: Container(
                     width: 76,
                     height: 76,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 3),
-                      color: _isTakingPhoto ? Colors.grey : Colors.white24,
-                    ),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3)),
                     child: _isTakingPhoto
-                        ? const Padding(
-                            padding: EdgeInsets.all(22),
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 3),
-                          )
+                        ? const CircularProgressIndicator(color: Colors.white)
                         : Center(
                             child: Container(
-                              width: 60,
-                              height: 60,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
+                                width: 60,
+                                height: 60,
+                                decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white))),
                   ),
                 ),
               ],
@@ -309,13 +218,11 @@ class _CameraScreenState extends State<CameraScreen>
 
 class _DarkOverlay extends StatelessWidget {
   final double frameLeft, frameTop, frameWidth, frameHeight;
-  const _DarkOverlay({
-    required this.frameLeft,
-    required this.frameTop,
-    required this.frameWidth,
-    required this.frameHeight,
-  });
-
+  const _DarkOverlay(
+      {required this.frameLeft,
+      required this.frameTop,
+      required this.frameWidth,
+      required this.frameHeight});
   @override
   Widget build(BuildContext context) {
     const color = Color(0x99000000);
@@ -350,96 +257,10 @@ class _DarkOverlay extends StatelessWidget {
 
 class _GuideFrame extends StatelessWidget {
   const _GuideFrame();
-
   @override
   Widget build(BuildContext context) {
-    const color = Color(0xFF4ADE80);
-    const s = 30.0;
-    const w = 4.0;
-    return Stack(children: [
-      Positioned.fill(
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(
-                color: Colors.white.withValues(alpha: 0.3), width: 1),
-          ),
-        ),
-      ),
-      Positioned(
-          top: 0,
-          left: 0,
-          child: _CornerWidget(
-              color: color, size: s, width: w, top: true, left: true)),
-      Positioned(
-          top: 0,
-          right: 0,
-          child: _CornerWidget(
-              color: color, size: s, width: w, top: true, left: false)),
-      Positioned(
-          bottom: 0,
-          left: 0,
-          child: _CornerWidget(
-              color: color, size: s, width: w, top: false, left: true)),
-      Positioned(
-          bottom: 0,
-          right: 0,
-          child: _CornerWidget(
-              color: color, size: s, width: w, top: false, left: false)),
-    ]);
+    return Container(
+        decoration: BoxDecoration(
+            border: Border.all(color: Colors.greenAccent, width: 2)));
   }
-}
-
-class _CornerWidget extends StatelessWidget {
-  final Color color;
-  final double size, width;
-  final bool top, left;
-  const _CornerWidget({
-    required this.color,
-    required this.size,
-    required this.width,
-    required this.top,
-    required this.left,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(
-        painter:
-            _CornerPainter(color: color, width: width, top: top, left: left),
-      ),
-    );
-  }
-}
-
-class _CornerPainter extends CustomPainter {
-  final Color color;
-  final double width;
-  final bool top, left;
-  _CornerPainter({
-    required this.color,
-    required this.width,
-    required this.top,
-    required this.left,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = width
-      ..strokeCap = StrokeCap.square
-      ..style = PaintingStyle.stroke;
-    final x = left ? 0.0 : size.width;
-    final y = top ? 0.0 : size.height;
-    final dx = left ? size.width : -size.width;
-    final dy = top ? size.height : -size.height;
-    canvas.drawLine(Offset(x, y), Offset(x + dx, y), paint);
-    canvas.drawLine(Offset(x, y), Offset(x, y + dy), paint);
-  }
-
-  @override
-  bool shouldRepaint(_CornerPainter old) => false;
 }

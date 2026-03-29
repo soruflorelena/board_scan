@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +9,7 @@ import 'preview_screen.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  // Función para abrir cámara personalizada
   Future<void> _openCamera(BuildContext context) async {
     final cameras = await availableCameras();
     if (!context.mounted) return;
@@ -18,6 +21,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // Función para abrir la galería del teléfono
   Future<void> _pickFromGallery(BuildContext context) async {
     final picker = ImagePicker();
     final List<XFile> images = await picker.pickMultiImage(
@@ -94,26 +98,26 @@ class HomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 32),
 
+                      // Texto
                       const Text(
                         'Board Scan',
                         style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                        ),
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5),
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Digitaliza tu pizarrón al instante.\nToma una foto o selecciona imágenes para extraer el texto.',
+                        'Digitaliza tu pizarrón.\nToma una foto o selecciona imágenes para extraer el texto.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 15,
-                          color: Colors.grey.shade600,
-                          height: 1.4,
-                        ),
+                            fontSize: 15,
+                            color: Colors.grey.shade600,
+                            height: 1.4),
                       ),
                       const SizedBox(height: 48),
 
+                      // Botones principales
                       SizedBox(
                         width: double.infinity,
                         height: 56,
@@ -127,8 +131,6 @@ class HomeScreen extends StatelessWidget {
                             backgroundColor: Colors.indigo.shade600,
                             foregroundColor: Colors.white,
                             elevation: 4,
-                            // ignore: deprecated_member_use
-                            shadowColor: Colors.indigo.withOpacity(0.5),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16)),
                           ),

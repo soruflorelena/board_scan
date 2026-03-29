@@ -2,15 +2,18 @@ import 'dart:io';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 class OcrService {
+  // Carga el modelo de ML Kit para letras de alfabeto latino
   final _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
   Future<OcrResult> extractText(String imagePath) async {
     final inputImage = InputImage.fromFile(File(imagePath));
+    // Pasa la imagen por la Inteligencia Artificial
     final RecognizedText recognizedText =
         await _textRecognizer.processImage(inputImage);
 
     List<TextBlock> textBlocks = [];
 
+    // Recorre bloque por bloque lo que detectó
     for (final block in recognizedText.blocks) {
       final rect = block.boundingBox;
       textBlocks.add(TextBlock(
