@@ -1,40 +1,32 @@
-import 'dart:io';
-import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
+import 'package:opencv_dart/opencv_dart.dart' as cv;
 
 class ImageProcessingService {
   static Future<String> procesarParaOcr(String imagePath) async {
-    final bytes = await File(imagePath).readAsBytes();
-    img.Image? image = img.decodeImage(bytes);
-    if (image == null) return imagePath;
+    // 1. Leer la imagen directamente en escala de grises
+    cv.Mat src = cv.imread(imagePath, flags: cv.IMREAD_GRAYSCALE);
 
-    if (image.width > 2000 || image.height > 2000) {
-      image = img.copyResize(
-        image,
-        width: image.width > image.height ? 2000 : null,
-        height: image.height >= image.width ? 2000 : null,
-      );
-    }
+    if (src.isEmpty) return imagePath;
 
-    // Escala de grises
-    image = img.grayscale(image);
+    // 2. Aplicar desenfoque ligero para eliminar el "polvo" o ruido del borrador
+    cv.Mat blurred = cv.gaussianBlur(src, (5, 5), 0);
 
-    // Aumentar contraste
-    image = img.adjustColor(image, contrast: 1.8);
-
-    // Nitidez
-    image = img.convolution(
-      image,
-      filter: [0, -1, 0, -1, 5, -1, 0, -1, 0],
-      div: 1,
-      offset: 0,
+    // 3. Binarización Adaptativa (La magia para pizarrones)
+    cv.Mat procesada = cv.adaptiveThreshold(
+      blurred,
+      255, // Valor máximo (Blanco)
+      cv.ADAPTIVE_THRESH_GAUSSIAN_C, // Método gaussiano para transiciones de luz más suaves
+      cv.THRESH_BINARY, // Genera texto negro sobre fondo blanco
+      31, // blockSize: Tamaño del cuadrante a evaluar
+      15, // C: Constante para ajustar la sensibilidad
     );
 
-    // Guardar imagen procesada
+    // 4. Guardar la imagen procesada
     final tempDir = await getTemporaryDirectory();
     final processedPath =
         '${tempDir.path}/processed_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    await File(processedPath).writeAsBytes(img.encodeJpg(image, quality: 95));
+
+    cv.imwrite(processedPath, procesada);
 
     return processedPath;
   }
