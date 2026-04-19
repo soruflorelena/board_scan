@@ -31,30 +31,14 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Cámara con control total (para el marco guía)
-  camera: ^0.11.0+2
-
   # Galería con selección múltiple
   image_picker: ^1.1.2
-
-  http: ^1.1.0      # NUEVO: Para enviar la foto al servidor
-  
-  http_parser: ^4.0.2 # NUEVO: Para enviar archivos multimedia
-  # Manipulación de imagen
-  image: ^4.2.0
 
   # Generación de PDF
   pdf: ^3.11.1
   printing: ^5.13.1
 
-  # Permisos
-  permission_handler: ^11.3.1
-
-  # Rutas temporales
-  path_provider: ^2.1.4
-
   cupertino_icons: ^1.0.8
-  opencv_dart: ^2.2.1+4
   
   google_mlkit_document_scanner: ^0.4.1
   google_mlkit_text_recognition: ^0.14.0
