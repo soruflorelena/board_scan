@@ -37,9 +37,9 @@ dependencies:
   # Galería con selección múltiple
   image_picker: ^1.1.2
 
-  # OCR - Google ML Kit
-  google_mlkit_text_recognition: ^0.13.0
-
+  http: ^1.1.0      # NUEVO: Para enviar la foto al servidor
+  
+  http_parser: ^4.0.2 # NUEVO: Para enviar archivos multimedia
   # Manipulación de imagen
   image: ^4.2.0
 
@@ -55,6 +55,10 @@ dependencies:
 
   cupertino_icons: ^1.0.8
   opencv_dart: ^2.2.1+4
+  
+  google_mlkit_document_scanner: ^0.4.1
+  google_mlkit_text_recognition: ^0.14.0
+
 
 dev_dependencies:
   flutter_test:

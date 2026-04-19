@@ -6,6 +6,7 @@
 
     <uses-feature android:name="android.hardware.camera" android:required="true"/>
     <application
+        android:usesCleartextTraffic="true"
         android:label="board_scan"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
