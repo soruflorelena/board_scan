@@ -1,5 +1,5 @@
+import 'dart:collection';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
@@ -7,30 +7,9 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:tflite_flutter/tflite_flutter.dart';
 
 class ScannerService {
   final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
-  Interpreter? _interpreter;
-  bool _isModelLoaded = false;
-
-  ScannerService() {
-    _initTensorFlow();
-  }
-
-  // --- CARGAMOS LA RED NEURONAL A LA MEMORIA ---
-  Future<void> _initTensorFlow() async {
-    try {
-      // Busca el archivo detect.tflite en tu carpeta assets/models/
-      _interpreter = await Interpreter.fromAsset('assets/models/detect.tflite');
-      _isModelLoaded = true;
-      debugPrint("🤖 Modelo TensorFlow Lite cargado exitosamente.");
-    } catch (e) {
-      debugPrint("❌ Error al cargar modelo TFLite: $e");
-      debugPrint(
-          "⚠️ Asegúrate de colocar tu archivo detect.tflite en assets/models/");
-    }
-  }
 
   Future<ScanResult?> escanearPizarrones() async {
     DocumentScanner documentScanner = DocumentScanner(
@@ -38,14 +17,17 @@ class ScannerService {
     );
 
     try {
+      debugPrint("📸 Abriendo cámara local...");
       final result = await documentScanner.scanDocument();
       final imagenes = result.images;
+
       if (imagenes == null || imagenes.isEmpty) {
         documentScanner.close();
         return null;
       }
+
       documentScanner.close();
-      return await _procesarConIA(imagenes);
+      return await _procesarLocalmente(imagenes);
     } catch (e) {
       documentScanner.close();
       return ScanResult(
@@ -59,15 +41,15 @@ class ScannerService {
       final List<XFile> photos = await picker.pickMultiImage();
       if (photos.isEmpty) return null;
       final rutasImagenes = photos.map((e) => e.path).toList();
-      return await _procesarConIA(rutasImagenes);
+      return await _procesarLocalmente(rutasImagenes);
     } catch (e) {
       return ScanResult(
           texto: "Error: $e", imagenPrevia: null, imagenesDetectadas: []);
     }
   }
 
-  Future<ScanResult> _procesarConIA(List<String> rutas) async {
-    debugPrint("🧠 Procesando ${rutas.length} imágenes con IA TFLite...");
+  Future<ScanResult> _procesarLocalmente(List<String> rutas) async {
+    debugPrint("🧠 Procesando ${rutas.length} imágenes 100% offline...");
 
     StringBuffer textoFinal = StringBuffer();
     File? imagenPrevia;
@@ -83,14 +65,9 @@ class ScannerService {
       textoFinal.writeln(recognizedText.text);
       textoFinal.writeln();
 
-      // Mandamos la imagen al modelo de TensorFlow
-      if (_isModelLoaded && _interpreter != null) {
-        final recortes = await _detectarObjetosTFLite(rutas[i]);
-        imagenesDetectadas.addAll(recortes);
-      } else {
-        debugPrint(
-            "⚠️ El modelo TFLite no está disponible. Saltando extracción de imagen.");
-      }
+      // Llamamos al nuevo motor
+      final recortes = await _extraerGraficas(rutas[i], recognizedText);
+      imagenesDetectadas.addAll(recortes);
     }
 
     return ScanResult(
@@ -100,116 +77,209 @@ class ScannerService {
     );
   }
 
-  // --- INFERENCIA TENSORFLOW LITE ---
-  Future<List<File>> _detectarObjetosTFLite(String rutaImagen) async {
+  // --- MOTOR DE EXTRACCIÓN (Umbralización + Cortafuegos) ---
+  Future<List<File>> _extraerGraficas(
+      String rutaImagen, RecognizedText recognizedText) async {
     final List<File> recortesGuardados = [];
     final bytes = await File(rutaImagen).readAsBytes();
     final imagenOriginal = img.decodeImage(bytes);
 
     if (imagenOriginal == null) return recortesGuardados;
 
-    // 1. PRE-PROCESAMIENTO
-    // La mayoría de los modelos móviles aceptan imágenes de 300x300
-    const int inputSize = 300;
-    final imagenRedimensionada =
-        img.copyResize(imagenOriginal, width: inputSize, height: inputSize);
+    final ancho = imagenOriginal.width;
+    final alto = imagenOriginal.height;
+    final procesada = img.grayscale(imagenOriginal);
 
-    // Convertimos los píxeles a la matriz plana que TensorFlow entiende [1, 300, 300, 3]
-    var inputTensor = List.generate(
-      1,
-      (i) => List.generate(
-        inputSize,
-        (y) => List.generate(
-          inputSize,
-          (x) {
-            final pixel = imagenRedimensionada.getPixel(x, y);
-            return [
-              pixel.r.toDouble() / 255.0,
-              pixel.g.toDouble() / 255.0,
-              pixel.b.toDouble() / 255.0
-            ];
-          },
-        ),
-      ),
-    );
+    final List<List<bool>> mascara =
+        List.generate(alto, (_) => List.filled(ancho, false));
 
-    // 2. CONFIGURACIÓN DE LOS TENSORES DE SALIDA (Asumiendo arquitectura estándar SSD)
-    // Esto se ajusta dependiendo de la arquitectura de tu .tflite (YOLO, SSD, etc.)
-    var outputLocations =
-        List.generate(1, (_) => List.generate(10, (_) => List.filled(4, 0.0)));
-    var outputClasses = List.generate(1, (_) => List.filled(10, 0.0));
-    var outputScores = List.generate(1, (_) => List.filled(10, 0.0));
-    var numDetections = List.filled(1, 0.0);
-
-    Map<int, Object> outputs = {
-      0: outputLocations,
-      1: outputClasses,
-      2: outputScores,
-      3: numDetections,
-    };
-
-    // 3. EJECUTAMOS LA RED NEURONAL
-    try {
-      _interpreter!.runForMultipleInputs([inputTensor], outputs);
-    } catch (e) {
-      debugPrint("❌ Error en la inferencia de TFLite: $e");
-      return recortesGuardados;
-    }
-
-    // 4. POST-PROCESAMIENTO Y RECORTE
-    final tempDir = await getTemporaryDirectory();
-    int contador = 0;
-
-    for (int i = 0; i < 10; i++) {
-      final score = outputScores[0][i];
-
-      // Umbral de confianza: Si la IA está más del 60% segura de que hay una gráfica/dibujo
-      if (score > 0.60) {
-        // Obtenemos las coordenadas normalizadas [0.0 a 1.0]
-        final top = outputLocations[0][i][0];
-        final left = outputLocations[0][i][1];
-        final bottom = outputLocations[0][i][2];
-        final right = outputLocations[0][i][3];
-
-        // Mapeamos a las dimensiones de la imagen original de alta resolución
-        int rectLeft = (left * imagenOriginal.width).toInt();
-        int rectTop = (top * imagenOriginal.height).toInt();
-        int rectWidth = ((right - left) * imagenOriginal.width).toInt();
-        int rectHeight = ((bottom - top) * imagenOriginal.height).toInt();
-
-        // Aplicamos un pequeño margen para no cortar los bordes exactos
-        final margin = 15;
-        rectLeft = (rectLeft - margin).clamp(0, imagenOriginal.width - 1);
-        rectTop = (rectTop - margin).clamp(0, imagenOriginal.height - 1);
-        rectWidth =
-            (rectWidth + margin * 2).clamp(0, imagenOriginal.width - rectLeft);
-        rectHeight =
-            (rectHeight + margin * 2).clamp(0, imagenOriginal.height - rectTop);
-
-        if (rectWidth > 50 && rectHeight > 50) {
-          final recorte = img.copyCrop(
-            imagenOriginal,
-            x: rectLeft,
-            y: rectTop,
-            width: rectWidth,
-            height: rectHeight,
-          );
-
-          final archivo = File(
-              "${tempDir.path}/grafica_tflite_${DateTime.now().millisecondsSinceEpoch}_$contador.jpg");
-          await archivo.writeAsBytes(img.encodeJpg(recorte, quality: 90));
-          recortesGuardados.add(archivo);
-          contador++;
+    // 1. TINTA OSCURA: ML Kit limpia el fondo, así que el umbral < 128 funciona perfecto
+    for (int y = 0; y < alto; y++) {
+      for (int x = 0; x < ancho; x++) {
+        if (procesada.getPixel(x, y).r < 128) {
+          mascara[y][x] = true;
         }
       }
+    }
+
+    // 2. CORTAFUEGOS DE BORDES: Destruimos el 3% de los bordes extremos de la hoja
+    // para evitar que el marco de escaneo negro engulla toda la imagen.
+    int margenBordeX = (ancho * 0.03).toInt();
+    int margenBordeY = (alto * 0.03).toInt();
+    for (int y = 0; y < alto; y++) {
+      for (int x = 0; x < ancho; x++) {
+        if (x < margenBordeX ||
+            x > ancho - margenBordeX ||
+            y < margenBordeY ||
+            y > alto - margenBordeY) {
+          mascara[y][x] = false;
+        }
+      }
+    }
+
+    // 3. BORRAR TEXTO: Limpiamos las letras con un margen de seguridad ligero
+    for (final block in recognizedText.blocks) {
+      final rect = block.boundingBox;
+      final left = (rect.left.toInt() - 10).clamp(0, ancho - 1);
+      final top = (rect.top.toInt() - 10).clamp(0, alto - 1);
+      final right = (rect.right.toInt() + 10).clamp(0, ancho - 1);
+      final bottom = (rect.bottom.toInt() + 10).clamp(0, alto - 1);
+
+      for (int y = top; y <= bottom; y++) {
+        for (int x = left; x <= right; x++) {
+          mascara[y][x] = false;
+        }
+      }
+    }
+
+    // 4. AGRUPACIÓN Y FUSIÓN
+    final regiones = _detectarComponentesConectados(mascara, ancho, alto);
+    final regionesFusionadas = _fusionarRegiones(regiones);
+
+    final tempDir = await getTemporaryDirectory();
+    int contador = 0;
+    final areaTotalImagen = ancho * alto;
+
+    // 5. FILTRADO FINAL Y RECORTE
+    for (final r in regionesFusionadas) {
+      // Filtrar ruido de lápiz o motas de polvo
+      if (r.width < 80 || r.height < 80) continue;
+
+      final area = r.width * r.height;
+      if (area < 10000) continue;
+
+      // LÍMITE MAESTRO: Si la supuesta gráfica cubre más del 70% de la hoja,
+      // es un falso positivo. La descartamos.
+      if (area > (areaTotalImagen * 0.70)) continue;
+
+      // Aplicar margen al recorte final
+      final margen = 20;
+      final xMin = (r.x - margen).clamp(0, ancho - 1);
+      final yMin = (r.y - margen).clamp(0, alto - 1);
+      final xMax = (r.x + r.width + margen).clamp(0, ancho);
+      final yMax = (r.y + r.height + margen).clamp(0, alto);
+
+      final recorte = img.copyCrop(
+        imagenOriginal,
+        x: xMin,
+        y: yMin,
+        width: xMax - xMin,
+        height: yMax - yMin,
+      );
+
+      final archivo = File(
+          "${tempDir.path}/grafica_detectada_${DateTime.now().millisecondsSinceEpoch}_$contador.jpg");
+      await archivo.writeAsBytes(img.encodeJpg(recorte, quality: 90));
+      recortesGuardados.add(archivo);
+      contador++;
     }
 
     return recortesGuardados;
   }
 
+  List<_RegionVisual> _detectarComponentesConectados(
+      List<List<bool>> mascara, int ancho, int alto) {
+    final visitado = List.generate(alto, (_) => List.filled(ancho, false));
+    final List<_RegionVisual> regiones = [];
+    const direcciones = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1]
+    ];
+
+    for (int y = 0; y < alto; y++) {
+      for (int x = 0; x < ancho; x++) {
+        if (!mascara[y][x] || visitado[y][x]) continue;
+
+        int minX = x, maxX = x, minY = y, maxY = y, pixeles = 0;
+        final cola = Queue<List<int>>();
+        cola.add([x, y]);
+        visitado[y][x] = true;
+
+        while (cola.isNotEmpty) {
+          final actual = cola.removeFirst();
+          final cx = actual[0], cy = actual[1];
+          pixeles++;
+
+          if (cx < minX) minX = cx;
+          if (cx > maxX) maxX = cx;
+          if (cy < minY) minY = cy;
+          if (cy > maxY) maxY = cy;
+
+          for (final d in direcciones) {
+            final nx = cx + d[0], ny = cy + d[1];
+            // Tolerancia de salto (revisamos el píxel inmediato)
+            if (nx >= 0 && ny >= 0 && nx < ancho && ny < alto) {
+              if (!visitado[ny][nx] && mascara[ny][nx]) {
+                visitado[ny][nx] = true;
+                cola.add([nx, ny]);
+              }
+            }
+          }
+        }
+
+        // Requiere una línea de tinta de buen tamaño para contar
+        if (pixeles > 100) {
+          regiones.add(_RegionVisual(
+              x: minX, y: minY, width: maxX - minX, height: maxY - minY));
+        }
+      }
+    }
+    return regiones;
+  }
+
+  List<_RegionVisual> _fusionarRegiones(List<_RegionVisual> regiones) {
+    if (regiones.isEmpty) return [];
+    final List<_RegionVisual> resultado = [];
+    final List<_RegionVisual> pendientes = List.from(regiones);
+
+    while (pendientes.isNotEmpty) {
+      _RegionVisual base = pendientes.removeAt(0);
+      bool fusionado;
+      do {
+        fusionado = false;
+        for (int i = 0; i < pendientes.length; i++) {
+          // Unir elementos que estén separados por hasta 100 píxeles
+          // (ideal para tablas o gráficas discontinuas)
+          if (_estanCerca(base, pendientes[i], 100)) {
+            base = _unir(base, pendientes[i]);
+            pendientes.removeAt(i);
+            fusionado = true;
+            break;
+          }
+        }
+      } while (fusionado);
+      resultado.add(base);
+    }
+    return resultado;
+  }
+
+  bool _estanCerca(_RegionVisual a, _RegionVisual b, int margen) {
+    final cercaX =
+        a.x <= (b.x + b.width) + margen && (a.x + a.width) + margen >= b.x;
+    final cercaY =
+        a.y <= (b.y + b.height) + margen && (a.y + a.height) + margen >= b.y;
+    return cercaX && cercaY;
+  }
+
+  _RegionVisual _unir(_RegionVisual a, _RegionVisual b) {
+    final x1 = a.x < b.x ? a.x : b.x;
+    final y1 = a.y < b.y ? a.y : b.y;
+    final x2 =
+        (a.x + a.width) > (b.x + b.width) ? (a.x + a.width) : (b.x + b.width);
+    final y2 = (a.y + a.height) > (b.y + b.height)
+        ? (a.y + a.height)
+        : (b.y + b.height);
+    return _RegionVisual(x: x1, y: y1, width: x2 - x1, height: y2 - y1);
+  }
+
   void dispose() {
     textRecognizer.close();
-    _interpreter?.close();
   }
 }
 
@@ -222,4 +292,13 @@ class ScanResult {
       {required this.texto,
       required this.imagenPrevia,
       required this.imagenesDetectadas});
+}
+
+class _RegionVisual {
+  final int x, y, width, height;
+  _RegionVisual(
+      {required this.x,
+      required this.y,
+      required this.width,
+      required this.height});
 }
