@@ -207,7 +207,7 @@ class ScannerService {
 
           for (final d in direcciones) {
             final nx = cx + d[0], ny = cy + d[1];
-            // Tolerancia de salto (revisamos el píxel inmediato)
+            // Tolerancia de salto
             if (nx >= 0 && ny >= 0 && nx < ancho && ny < alto) {
               if (!visitado[ny][nx] && mascara[ny][nx]) {
                 visitado[ny][nx] = true;
