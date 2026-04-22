@@ -17,7 +17,7 @@ class ScannerService {
     );
 
     try {
-      debugPrint("📸 Abriendo cámara local...");
+      debugPrint("Abriendo cámara");
       final result = await documentScanner.scanDocument();
       final imagenes = result.images;
 
@@ -49,7 +49,7 @@ class ScannerService {
   }
 
   Future<ScanResult> _procesarLocalmente(List<String> rutas) async {
-    debugPrint("🧠 Procesando ${rutas.length} imágenes 100% offline...");
+    debugPrint("Procesando ${rutas.length} imágenes");
 
     StringBuffer textoFinal = StringBuffer();
     File? imagenPrevia;
@@ -77,7 +77,6 @@ class ScannerService {
     );
   }
 
-  // --- MOTOR DE EXTRACCIÓN (Umbralización + Cortafuegos) ---
   Future<List<File>> _extraerGraficas(
       String rutaImagen, RecognizedText recognizedText) async {
     final List<File> recortesGuardados = [];
@@ -93,7 +92,6 @@ class ScannerService {
     final List<List<bool>> mascara =
         List.generate(alto, (_) => List.filled(ancho, false));
 
-    // 1. TINTA OSCURA: ML Kit limpia el fondo, así que el umbral < 128 funciona perfecto
     for (int y = 0; y < alto; y++) {
       for (int x = 0; x < ancho; x++) {
         if (procesada.getPixel(x, y).r < 128) {
@@ -102,8 +100,6 @@ class ScannerService {
       }
     }
 
-    // 2. CORTAFUEGOS DE BORDES: Destruimos el 3% de los bordes extremos de la hoja
-    // para evitar que el marco de escaneo negro engulla toda la imagen.
     int margenBordeX = (ancho * 0.03).toInt();
     int margenBordeY = (alto * 0.03).toInt();
     for (int y = 0; y < alto; y++) {
@@ -117,7 +113,7 @@ class ScannerService {
       }
     }
 
-    // 3. BORRAR TEXTO: Limpiamos las letras con un margen de seguridad ligero
+    // Borrar texto
     for (final block in recognizedText.blocks) {
       final rect = block.boundingBox;
       final left = (rect.left.toInt() - 10).clamp(0, ancho - 1);
@@ -132,7 +128,7 @@ class ScannerService {
       }
     }
 
-    // 4. AGRUPACIÓN Y FUSIÓN
+    // Agrupación y fusión
     final regiones = _detectarComponentesConectados(mascara, ancho, alto);
     final regionesFusionadas = _fusionarRegiones(regiones);
 
@@ -140,19 +136,17 @@ class ScannerService {
     int contador = 0;
     final areaTotalImagen = ancho * alto;
 
-    // 5. FILTRADO FINAL Y RECORTE
+    // Filtrado
     for (final r in regionesFusionadas) {
-      // Filtrar ruido de lápiz o motas de polvo
+      // Filtrar ruido
       if (r.width < 80 || r.height < 80) continue;
 
       final area = r.width * r.height;
       if (area < 10000) continue;
 
-      // LÍMITE MAESTRO: Si la supuesta gráfica cubre más del 70% de la hoja,
-      // es un falso positivo. La descartamos.
       if (area > (areaTotalImagen * 0.70)) continue;
 
-      // Aplicar margen al recorte final
+      // Aplicar margen
       final margen = 20;
       final xMin = (r.x - margen).clamp(0, ancho - 1);
       final yMin = (r.y - margen).clamp(0, alto - 1);
@@ -223,7 +217,6 @@ class ScannerService {
           }
         }
 
-        // Requiere una línea de tinta de buen tamaño para contar
         if (pixeles > 100) {
           regiones.add(_RegionVisual(
               x: minX, y: minY, width: maxX - minX, height: maxY - minY));
@@ -245,7 +238,6 @@ class ScannerService {
         fusionado = false;
         for (int i = 0; i < pendientes.length; i++) {
           // Unir elementos que estén separados por hasta 100 píxeles
-          // (ideal para tablas o gráficas discontinuas)
           if (_estanCerca(base, pendientes[i], 100)) {
             base = _unir(base, pendientes[i]);
             pendientes.removeAt(i);
