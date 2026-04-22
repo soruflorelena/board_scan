@@ -31,17 +31,21 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Galería con selección múltiple
   image_picker: ^1.1.2
+  path_provider: ^2.1.4
+  image: ^4.2.0
 
-  # Generación de PDF
-  pdf: ^3.11.1
-  printing: ^5.13.1
-
-  cupertino_icons: ^1.0.8
-  
   google_mlkit_document_scanner: ^0.4.1
   google_mlkit_text_recognition: ^0.14.0
+  
+  # Motor local de Inteligencia Artificial
+  tflite_flutter: ^0.10.4
+
+flutter:
+  uses-material-design: true
+  # Habilitamos la carpeta donde guardaremos el modelo
+  assets:
+    - assets/models/
 
 
 dev_dependencies:
