@@ -27,7 +27,7 @@ class ScannerService {
       }
 
       documentScanner.close();
-      return await _procesarLocalmente(imagenes);
+      return await _procesarImagenes(imagenes);
     } catch (e) {
       documentScanner.close();
       return ScanResult(
@@ -41,14 +41,14 @@ class ScannerService {
       final List<XFile> photos = await picker.pickMultiImage();
       if (photos.isEmpty) return null;
       final rutasImagenes = photos.map((e) => e.path).toList();
-      return await _procesarLocalmente(rutasImagenes);
+      return await _procesarImagenes(rutasImagenes);
     } catch (e) {
       return ScanResult(
           texto: "Error: $e", imagenPrevia: null, imagenesDetectadas: []);
     }
   }
 
-  Future<ScanResult> _procesarLocalmente(List<String> rutas) async {
+  Future<ScanResult> _procesarImagenes(List<String> rutas) async {
     debugPrint("Procesando ${rutas.length} imágenes");
 
     StringBuffer textoFinal = StringBuffer();
@@ -77,6 +77,7 @@ class ScannerService {
     );
   }
 
+  // Extrae las gráficas de la imagen
   Future<List<File>> _extraerGraficas(
       String rutaImagen, RecognizedText recognizedText) async {
     final List<File> recortesGuardados = [];
@@ -100,6 +101,7 @@ class ScannerService {
       }
     }
 
+    // Elimina los bordes de la imagen
     int margenBordeX = (ancho * 0.03).toInt();
     int margenBordeY = (alto * 0.03).toInt();
     for (int y = 0; y < alto; y++) {
@@ -128,7 +130,7 @@ class ScannerService {
       }
     }
 
-    // Agrupación y fusión
+    // Une las regiones cercanas para formar regiones más grandes
     final regiones = _detectarComponentesConectados(mascara, ancho, alto);
     final regionesFusionadas = _fusionarRegiones(regiones);
 
@@ -171,6 +173,7 @@ class ScannerService {
     return recortesGuardados;
   }
 
+  // Detecta regiones conectadas
   List<_RegionVisual> _detectarComponentesConectados(
       List<List<bool>> mascara, int ancho, int alto) {
     final visitado = List.generate(alto, (_) => List.filled(ancho, false));
@@ -226,6 +229,7 @@ class ScannerService {
     return regiones;
   }
 
+  // Junta las regiones que estén cerca para formar una sola región más grande
   List<_RegionVisual> _fusionarRegiones(List<_RegionVisual> regiones) {
     if (regiones.isEmpty) return [];
     final List<_RegionVisual> resultado = [];
@@ -251,6 +255,7 @@ class ScannerService {
     return resultado;
   }
 
+  // Determina si dos regiones están cerca
   bool _estanCerca(_RegionVisual a, _RegionVisual b, int margen) {
     final cercaX =
         a.x <= (b.x + b.width) + margen && (a.x + a.width) + margen >= b.x;
@@ -259,6 +264,7 @@ class ScannerService {
     return cercaX && cercaY;
   }
 
+  // Une dos regiones en una sola que las tenga a ambas
   _RegionVisual _unir(_RegionVisual a, _RegionVisual b) {
     final x1 = a.x < b.x ? a.x : b.x;
     final y1 = a.y < b.y ? a.y : b.y;
@@ -275,6 +281,7 @@ class ScannerService {
   }
 }
 
+// Mostrar el resultado de la foto, con el texto y las imágenes
 class ScanResult {
   final String texto;
   final File? imagenPrevia;
@@ -286,6 +293,7 @@ class ScanResult {
       required this.imagenesDetectadas});
 }
 
+// Clase auxiliar para representar las regiones detectadas en la imagen
 class _RegionVisual {
   final int x, y, width, height;
   _RegionVisual(
