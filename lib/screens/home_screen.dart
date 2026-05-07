@@ -51,15 +51,14 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // --- BARRA SUPERIOR CON EL BOTÓN DE PDF ---
-      // --- BARRA SUPERIOR CON LOS BOTONES DE PDF ---
+      // Barra con los botones del pdf
       appBar: AppBar(
         title: const Text('Board Scan'),
         actions: [
           if (_resultadoActual != null &&
               (_resultadoActual!.texto.isNotEmpty ||
                   _resultadoActual!.imagenesDetectadas.isNotEmpty)) ...[
-            // Botón 1: Descargar al celular
+            // Botón descargar al celular
             IconButton(
               icon: const Icon(Icons.download),
               tooltip: 'Guardar en dispositivo',
@@ -91,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
 
-            // Botón 2: Compartir externamente
+            // Botón compartir
             IconButton(
               icon: const Icon(Icons.share),
               tooltip: 'Compartir PDF',
@@ -118,7 +117,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      // --- CUERPO DE LA APLICACIÓN ---
       body: _estaCargando
           ? const Center(
               child: Column(
@@ -126,8 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 20),
-                  Text('Procesando imagen (OCR y Detección)...',
-                      style: TextStyle(fontSize: 16)),
+                  Text('Procesando imagen...', style: TextStyle(fontSize: 16)),
                 ],
               ),
             )
@@ -136,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // BOTONES DE ACCIÓN PRINCIPAL
+                  // Botones acciones principales
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -162,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 30),
 
-                  // RESULTADOS
+                  // Resultados
                   if (_resultadoActual == null)
                     const Center(
                       child: Text(
@@ -172,7 +169,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     )
                   else ...[
-                    // TARJETA DE TEXTO
                     if (_resultadoActual!.texto.isNotEmpty)
                       Card(
                         elevation: 4,
@@ -200,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(height: 20),
 
-                    // TARJETA DE IMÁGENES
+                    // Tarjeta de imágenes
                     if (_resultadoActual!.imagenesDetectadas.isNotEmpty)
                       Card(
                         elevation: 4,
