@@ -1,8 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-// Importamos tu servicio de escáner
 import '../services/scanner_service.dart';
-// Importamos tu nuevo servicio de PDF
 import '../services/pdf_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -15,11 +13,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ScannerService _scannerService = ScannerService();
 
-  // Esta es tu variable maestra donde se guarda todo el resultado
   ScanResult? _resultadoActual;
   bool _estaCargando = false;
 
-  // --- MÉTODOS DE LA CÁMARA Y GALERÍA ---
   Future<void> _escanearConCamara() async {
     setState(() => _estaCargando = true);
 
@@ -180,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                '📝 Texto Extraído',
+                                'Texto Extraído',
                                 style: TextStyle(
                                     fontSize: 18, fontWeight: FontWeight.bold),
                               ),
@@ -208,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '🖼️ Gráficas o dibujos detectados (${_resultadoActual!.imagenesDetectadas.length})',
+                                'Gráficas o dibujos detectados (${_resultadoActual!.imagenesDetectadas.length})',
                                 style: const TextStyle(
                                     fontSize: 18, fontWeight: FontWeight.bold),
                               ),
