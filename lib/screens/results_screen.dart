@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import '../services/scanner_service.dart';
 import '../services/pdf_service.dart';
 
@@ -17,12 +19,15 @@ class _ResultsScreenState extends State<ResultsScreen> {
   bool _estaCargando = false;
   late TextEditingController _textoController;
 
+  // lista mutable para controlar cuáles imágenes se quedan y sus recortes
+  List<File> _imagenesDetectadas = [];
+
   @override
   void initState() {
     super.initState();
     _resultadoActual = widget.resultadoInicial;
-    // inicializa el controlador con el texto detectado inicialmente
     _textoController = TextEditingController(text: _resultadoActual.texto);
+    _imagenesDetectadas = List.from(_resultadoActual.imagenesDetectadas);
   }
 
   Future<void> _escanearConCamara() async {
@@ -33,6 +38,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
       setState(() {
         _resultadoActual = resultado;
         _textoController.text = resultado.texto;
+        _imagenesDetectadas = List.from(resultado.imagenesDetectadas);
       });
     }
     setState(() => _estaCargando = false);
@@ -46,9 +52,41 @@ class _ResultsScreenState extends State<ResultsScreen> {
       setState(() {
         _resultadoActual = resultado;
         _textoController.text = resultado.texto;
+        _imagenesDetectadas = List.from(resultado.imagenesDetectadas);
       });
     }
     setState(() => _estaCargando = false);
+  }
+
+  // función para abrir el editor de recortes en una imagen específica
+  // función para abrir el editor de recortes en una imagen específica
+  Future<void> _modificarRecorte(int indice) async {
+    final archivoActual = _imagenesDetectadas[indice];
+
+    final archivoRecortado = await ImageCropper().cropImage(
+      sourcePath: archivoActual.path,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Modificar recorte',
+          toolbarColor: Colors.indigo,
+          // Añade esta línea para pintar la barra superior y evitar el choque
+          statusBarColor: Colors.indigo.shade900,
+          toolbarWidgetColor: Colors.white,
+          initAspectRatio: CropAspectRatioPreset.original,
+          lockAspectRatio: false,
+        ),
+        IOSUiSettings(
+          title: 'Modificar recorte',
+        ),
+      ],
+    );
+
+    if (archivoRecortado != null) {
+      setState(() {
+        // actualizamos la imagen en la lista con el nuevo recorte
+        _imagenesDetectadas[indice] = File(archivoRecortado.path);
+      });
+    }
   }
 
   @override
@@ -74,9 +112,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
         actions: [
-          // muestra opciones de guardado solo si hay datos en la pantalla de resultados
           if (_textoController.text.isNotEmpty ||
-              _resultadoActual.imagenesDetectadas.isNotEmpty) ...[
+              _imagenesDetectadas.isNotEmpty) ...[
             IconButton(
               icon: const Icon(Icons.download_rounded),
               tooltip: 'Guardar PDF',
@@ -85,7 +122,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                 try {
                   final ruta = await PdfService.descargarPdf(
                     texto: _textoController.text,
-                    imagenes: _resultadoActual.imagenesDetectadas,
+                    imagenes: _imagenesDetectadas,
                   );
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -117,7 +154,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                 try {
                   await PdfService.compartirPdf(
                     texto: _textoController.text,
-                    imagenes: _resultadoActual.imagenesDetectadas,
+                    imagenes: _imagenesDetectadas,
                   );
                 } catch (e) {
                   if (!mounted) return;
@@ -157,7 +194,6 @@ class _ResultsScreenState extends State<ResultsScreen> {
     );
   }
 
-  // dibuja la vista de tarjetas una vez que hay resultados
   Widget _construirPantallaResultados(
       ColorScheme colorScheme, TextTheme textTheme) {
     return SingleChildScrollView(
@@ -165,7 +201,6 @@ class _ResultsScreenState extends State<ResultsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // fila superior con título y botones compactos
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -192,8 +227,6 @@ class _ResultsScreenState extends State<ResultsScreen> {
             ],
           ),
           const SizedBox(height: 24),
-
-          // editor de texto extraído
           if (_resultadoActual.texto.isNotEmpty) ...[
             Card(
               elevation: 0,
@@ -257,15 +290,13 @@ class _ResultsScreenState extends State<ResultsScreen> {
             ),
             const SizedBox(height: 24),
           ],
-
-          // visor de gráficas detectadas
-          if (_resultadoActual.imagenesDetectadas.isNotEmpty) ...[
+          if (_imagenesDetectadas.isNotEmpty) ...[
             Row(
               children: [
                 Icon(Icons.image_rounded, color: colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'Gráficas (${_resultadoActual.imagenesDetectadas.length})',
+                  'Gráficas (${_imagenesDetectadas.length})',
                   style: textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.w600),
                 ),
@@ -276,22 +307,74 @@ class _ResultsScreenState extends State<ResultsScreen> {
               height: 240,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                itemCount: _resultadoActual.imagenesDetectadas.length,
+                itemCount: _imagenesDetectadas.length,
                 itemBuilder: (context, index) {
                   return Padding(
                     padding: const EdgeInsets.only(right: 16.0),
-                    child: Card(
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(color: colorScheme.outlineVariant),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Image.file(
-                        _resultadoActual.imagenesDetectadas[index],
-                        width: 240,
-                        fit: BoxFit.contain,
-                      ),
+                    child: Stack(
+                      children: [
+                        Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(color: colorScheme.outlineVariant),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Image.file(
+                            _imagenesDetectadas[index],
+                            width: 240,
+                            height: 240,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        // agrupamos los botones de edición y borrado
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Row(
+                            children: [
+                              // boton para recortar
+                              IconButton.filled(
+                                style: IconButton.styleFrom(
+                                  backgroundColor: colorScheme
+                                      .secondaryContainer
+                                      .withValues(alpha: 0.9),
+                                  foregroundColor:
+                                      colorScheme.onSecondaryContainer,
+                                ),
+                                icon: const Icon(Icons.crop_rounded, size: 20),
+                                tooltip: 'Ajustar recorte',
+                                onPressed: () => _modificarRecorte(index),
+                              ),
+                              const SizedBox(width: 8),
+                              // boton para eliminar
+                              IconButton.filled(
+                                style: IconButton.styleFrom(
+                                  backgroundColor: colorScheme.errorContainer
+                                      .withValues(alpha: 0.9),
+                                  foregroundColor: colorScheme.onErrorContainer,
+                                ),
+                                icon: const Icon(Icons.delete_outline_rounded,
+                                    size: 20),
+                                tooltip: 'Quitar del PDF',
+                                onPressed: () {
+                                  setState(() {
+                                    _imagenesDetectadas.removeAt(index);
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Imagen removida del documento.'),
+                                      behavior: SnackBarBehavior.floating,
+                                      duration: Duration(seconds: 1),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 },
@@ -311,7 +394,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'No se detectaron dibujos aislados en esta imagen.',
+                      'No hay dibujos o gráficas seleccionadas para este documento.',
                       style: TextStyle(color: colorScheme.onSecondaryContainer),
                     ),
                   ),
