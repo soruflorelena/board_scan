@@ -15,10 +15,15 @@ class MyApp extends StatelessWidget {
       title: 'Board Scan',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        // Aquí generamos la paleta completa basada en tu color #6B0000
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0x7EA67B),
+          brightness: Brightness
+              .light, // puedes cambiar a dark si prefieres modo oscuro
+        ),
         useMaterial3: true,
       ),
-      home: HomeScreen(),
+      home: const HomeScreen(),
     );
   }
 }
