@@ -45,7 +45,7 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
-  
+  image_cropper: ^8.0.0
 
 
 dev_dependencies:

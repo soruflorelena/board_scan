@@ -1,7 +1,8 @@
 import 'dart:collection';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image/image.dart' as img;
@@ -43,7 +44,34 @@ class ScannerService {
     try {
       final List<XFile> photos = await picker.pickMultiImage();
       if (photos.isEmpty) return null;
-      final rutasImagenes = photos.map((e) => e.path).toList();
+
+      final List<String> rutasImagenes = [];
+
+      // permite recortar y ajustar los bordes de cada imagen elegida
+      for (final photo in photos) {
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: photo.path,
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Ajustar marco',
+              toolbarColor: Colors.indigo,
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.original,
+              lockAspectRatio: false,
+            ),
+            IOSUiSettings(
+              title: 'Ajustar marco',
+            ),
+          ],
+        );
+
+        if (croppedFile != null) {
+          rutasImagenes.add(croppedFile.path);
+        }
+      }
+
+      if (rutasImagenes.isEmpty) return null;
+
       return await _procesarImagenes(rutasImagenes);
     } catch (e) {
       return ScanResult(
@@ -287,9 +315,8 @@ class ScannerService {
   _RegionVisual _unir(_RegionVisual a, _RegionVisual b) {
     final x1 = a.x < b.x ? a.x : b.x;
     final y1 = a.y < b.y ? a.y : b.y;
-    final x2 = (a.x + a.width) > (b.x + b.width)
-        ? (a.x + a.width)
-        : (b.x + b.width);
+    final x2 =
+        (a.x + a.width) > (b.x + b.width) ? (a.x + a.width) : (b.x + b.width);
     final y2 = (a.y + a.height) > (b.y + b.height)
         ? (a.y + a.height)
         : (b.y + b.height);
