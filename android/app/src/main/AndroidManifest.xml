@@ -9,7 +9,7 @@
     
     <application
         android:usesCleartextTraffic="true"
-        android:label="board_scan"
+        android:label="Board Scan"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         
