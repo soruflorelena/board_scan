@@ -31,7 +31,10 @@ class ScannerService {
     } catch (e) {
       documentScanner.close();
       return ScanResult(
-          texto: "Error: $e", imagenPrevia: null, imagenesDetectadas: []);
+        texto: "Error: $e",
+        imagenPrevia: null,
+        imagenesDetectadas: [],
+      );
     }
   }
 
@@ -44,7 +47,10 @@ class ScannerService {
       return await _procesarImagenes(rutasImagenes);
     } catch (e) {
       return ScanResult(
-          texto: "Error: $e", imagenPrevia: null, imagenesDetectadas: []);
+        texto: "Error: $e",
+        imagenPrevia: null,
+        imagenesDetectadas: [],
+      );
     }
   }
 
@@ -65,7 +71,6 @@ class ScannerService {
       textoFinal.writeln(recognizedText.text);
       textoFinal.writeln();
 
-      // Llamamos al nuevo motor
       final recortes = await _extraerGraficas(rutas[i], recognizedText);
       imagenesDetectadas.addAll(recortes);
     }
@@ -79,7 +84,9 @@ class ScannerService {
 
   // Extrae las gráficas de la imagen
   Future<List<File>> _extraerGraficas(
-      String rutaImagen, RecognizedText recognizedText) async {
+    String rutaImagen,
+    RecognizedText recognizedText,
+  ) async {
     final List<File> recortesGuardados = [];
     final bytes = await File(rutaImagen).readAsBytes();
     final imagenOriginal = img.decodeImage(bytes);
@@ -90,8 +97,10 @@ class ScannerService {
     final alto = imagenOriginal.height;
     final procesada = img.grayscale(imagenOriginal);
 
-    final List<List<bool>> mascara =
-        List.generate(alto, (_) => List.filled(ancho, false));
+    final List<List<bool>> mascara = List.generate(
+      alto,
+      (_) => List.filled(ancho, false),
+    );
 
     for (int y = 0; y < alto; y++) {
       for (int x = 0; x < ancho; x++) {
@@ -164,7 +173,8 @@ class ScannerService {
       );
 
       final archivo = File(
-          "${tempDir.path}/grafica_detectada_${DateTime.now().millisecondsSinceEpoch}_$contador.jpg");
+        "${tempDir.path}/grafica_detectada_${DateTime.now().millisecondsSinceEpoch}_$contador.jpg",
+      );
       await archivo.writeAsBytes(img.encodeJpg(recorte, quality: 90));
       recortesGuardados.add(archivo);
       contador++;
@@ -175,7 +185,10 @@ class ScannerService {
 
   // Detecta regiones conectadas
   List<_RegionVisual> _detectarComponentesConectados(
-      List<List<bool>> mascara, int ancho, int alto) {
+    List<List<bool>> mascara,
+    int ancho,
+    int alto,
+  ) {
     final visitado = List.generate(alto, (_) => List.filled(ancho, false));
     final List<_RegionVisual> regiones = [];
     const direcciones = [
@@ -186,7 +199,7 @@ class ScannerService {
       [1, 1],
       [1, -1],
       [-1, 1],
-      [-1, -1]
+      [-1, -1],
     ];
 
     for (int y = 0; y < alto; y++) {
@@ -221,8 +234,14 @@ class ScannerService {
         }
 
         if (pixeles > 100) {
-          regiones.add(_RegionVisual(
-              x: minX, y: minY, width: maxX - minX, height: maxY - minY));
+          regiones.add(
+            _RegionVisual(
+              x: minX,
+              y: minY,
+              width: maxX - minX,
+              height: maxY - minY,
+            ),
+          );
         }
       }
     }
@@ -268,8 +287,9 @@ class ScannerService {
   _RegionVisual _unir(_RegionVisual a, _RegionVisual b) {
     final x1 = a.x < b.x ? a.x : b.x;
     final y1 = a.y < b.y ? a.y : b.y;
-    final x2 =
-        (a.x + a.width) > (b.x + b.width) ? (a.x + a.width) : (b.x + b.width);
+    final x2 = (a.x + a.width) > (b.x + b.width)
+        ? (a.x + a.width)
+        : (b.x + b.width);
     final y2 = (a.y + a.height) > (b.y + b.height)
         ? (a.y + a.height)
         : (b.y + b.height);
@@ -287,18 +307,20 @@ class ScanResult {
   final File? imagenPrevia;
   final List<File> imagenesDetectadas;
 
-  ScanResult(
-      {required this.texto,
-      required this.imagenPrevia,
-      required this.imagenesDetectadas});
+  ScanResult({
+    required this.texto,
+    required this.imagenPrevia,
+    required this.imagenesDetectadas,
+  });
 }
 
 // Clase auxiliar para representar las regiones detectadas en la imagen
 class _RegionVisual {
   final int x, y, width, height;
-  _RegionVisual(
-      {required this.x,
-      required this.y,
-      required this.width,
-      required this.height});
+  _RegionVisual({
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+  });
 }

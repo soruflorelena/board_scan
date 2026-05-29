@@ -15,6 +15,9 @@ class _HomeScreenState extends State<HomeScreen> {
   ScanResult? _resultadoActual;
   bool _estaCargando = false;
 
+  // CONTROLADOR PARA EDITAR EL TEXTO
+  final TextEditingController _textoController = TextEditingController();
+
   Future<void> _escanearConCamara() async {
     setState(() => _estaCargando = true);
 
@@ -22,6 +25,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() {
       _resultadoActual = resultado;
+
+      // CARGA EL TEXTO DETECTADO EN EL TEXTFIELD
+      _textoController.text = resultado?.texto ?? '';
+
       _estaCargando = false;
     });
   }
@@ -33,12 +40,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() {
       _resultadoActual = resultado;
+
+      // CARGA EL TEXTO DETECTADO EN EL TEXTFIELD
+      _textoController.text = resultado?.texto ?? '';
+
       _estaCargando = false;
     });
   }
 
   @override
   void dispose() {
+    _textoController.dispose();
     _scannerService.dispose();
     super.dispose();
   }
@@ -51,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Board Scan'),
         actions: [
           if (_resultadoActual != null &&
-              (_resultadoActual!.texto.isNotEmpty ||
+              (_textoController.text.isNotEmpty ||
                   _resultadoActual!.imagenesDetectadas.isNotEmpty)) ...[
             // Botón descargar al celular
             IconButton(
@@ -59,12 +71,15 @@ class _HomeScreenState extends State<HomeScreen> {
               tooltip: 'Guardar en dispositivo',
               onPressed: () async {
                 setState(() => _estaCargando = true);
+
                 try {
                   final ruta = await PdfService.descargarPdf(
-                    texto: _resultadoActual!.texto,
+                    texto: _textoController.text,
                     imagenes: _resultadoActual!.imagenesDetectadas,
                   );
+
                   if (!mounted) return;
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('¡PDF guardado con éxito!\nRuta: $ruta'),
@@ -74,10 +89,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 } catch (e) {
                   if (!mounted) return;
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                        content: Text('Error al descargar: $e'),
-                        backgroundColor: Colors.red),
+                      content: Text('Error al descargar: $e'),
+                      backgroundColor: Colors.red,
+                    ),
                   );
                 } finally {
                   if (mounted) setState(() => _estaCargando = false);
@@ -91,24 +108,27 @@ class _HomeScreenState extends State<HomeScreen> {
               tooltip: 'Compartir PDF',
               onPressed: () async {
                 setState(() => _estaCargando = true);
+
                 try {
                   await PdfService.compartirPdf(
-                    texto: _resultadoActual!.texto,
+                    texto: _textoController.text,
                     imagenes: _resultadoActual!.imagenesDetectadas,
                   );
                 } catch (e) {
                   if (!mounted) return;
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                        content: Text('Error al compartir: $e'),
-                        backgroundColor: Colors.red),
+                      content: Text('Error al compartir: $e'),
+                      backgroundColor: Colors.red,
+                    ),
                   );
                 } finally {
                   if (mounted) setState(() => _estaCargando = false);
                 }
               },
             ),
-          ]
+          ],
         ],
       ),
 
@@ -138,7 +158,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         label: const Text('Escanear'),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 15),
+                            horizontal: 20,
+                            vertical: 15,
+                          ),
                         ),
                       ),
                       ElevatedButton.icon(
@@ -147,11 +169,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         label: const Text('Galería'),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 15),
+                            horizontal: 20,
+                            vertical: 15,
+                          ),
                         ),
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 30),
 
                   // Resultados
@@ -164,11 +189,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     )
                   else ...[
+                    // TARJETA DE TEXTO
                     if (_resultadoActual!.texto.isNotEmpty)
                       Card(
                         elevation: 4,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
@@ -177,12 +204,44 @@ class _HomeScreenState extends State<HomeScreen> {
                               const Text(
                                 'Texto Extraído',
                                 style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
+
                               const Divider(),
-                              SelectableText(
-                                _resultadoActual!.texto,
+
+                              // TEXTO EDITABLE
+                              TextField(
+                                controller: _textoController,
+                                maxLines: null,
+                                minLines: 5,
+                                keyboardType: TextInputType.multiline,
                                 style: const TextStyle(fontSize: 16),
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(),
+                                  hintText: 'Edita aquí el texto detectado...',
+                                ),
+                              ),
+
+                              const SizedBox(height: 10),
+
+                              // BOTÓN ACTUALIZAR PDF
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  setState(() {});
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Texto actualizado. Ahora puedes descargar o compartir el PDF.',
+                                      ),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.check),
+                                label: const Text('Actualizar texto para PDF'),
                               ),
                             ],
                           ),
@@ -196,7 +255,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       Card(
                         elevation: 4,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
@@ -205,32 +265,42 @@ class _HomeScreenState extends State<HomeScreen> {
                               Text(
                                 'Gráficas o dibujos detectados (${_resultadoActual!.imagenesDetectadas.length})',
                                 style: const TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
+
                               const Divider(),
+
                               const SizedBox(height: 10),
+
                               // Lista horizontal de recortes
                               SizedBox(
                                 height: 250,
                                 child: ListView.builder(
                                   scrollDirection: Axis.horizontal,
                                   itemCount: _resultadoActual!
-                                      .imagenesDetectadas.length,
+                                      .imagenesDetectadas
+                                      .length,
                                   itemBuilder: (context, index) {
                                     return Padding(
-                                      padding:
-                                          const EdgeInsets.only(right: 15.0),
+                                      padding: const EdgeInsets.only(
+                                        right: 15.0,
+                                      ),
                                       child: Container(
                                         decoration: BoxDecoration(
                                           border: Border.all(
-                                              color: Colors.grey.shade300,
-                                              width: 2),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
+                                            color: Colors.grey.shade300,
+                                            width: 2,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(6),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
                                           child: Image.file(
                                             _resultadoActual!
                                                 .imagenesDetectadas[index],
@@ -254,11 +324,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Text(
                           'No se detectaron dibujos o gráficas aisladas en esta imagen.',
                           style: TextStyle(
-                              color: Colors.orange,
-                              fontStyle: FontStyle.italic),
+                            color: Colors.orange,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
                       ),
-                  ]
+                  ],
                 ],
               ),
             ),
